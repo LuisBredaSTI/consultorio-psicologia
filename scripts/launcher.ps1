@@ -32,17 +32,15 @@ function Ensure-Node {
 function Update-App {
   try {
     $current=Read-Version
-    $rel=Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -Headers @{ 'User-Agent'='ConsultorioUpdater' }
-    $latest=$rel.tag_name.TrimStart('v')
+    $remoteVersion = Invoke-RestMethod -Uri "https://raw.githubusercontent.com/$Repo/main/app/version.json" -Headers @{ 'User-Agent'='ConsultorioUpdater' }
+    $latest = $remoteVersion.version
     if(-not (Is-Newer $latest $current)){ return }
-    $asset=$rel.assets | Where-Object {$_.name -eq 'consultorio-update.zip'} | Select-Object -First 1
-    if(-not $asset){ return }
     $backupDir=Join-Path $DataDir 'backups'
     New-Item -ItemType Directory -Force $backupDir | Out-Null
     $db=Join-Path $DataDir 'consultorio.db'
     if(Test-Path $db){ Copy-Item $db (Join-Path $backupDir ('consultorio-'+(Get-Date -Format 'yyyyMMdd-HHmmss')+'.db')) -Force }
     $zip=Join-Path $env:TEMP ('consultorio-update-'+[guid]::NewGuid().ToString('N')+'.zip')
-    Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip -UseBasicParsing
+    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/$Repo/main/releases/consultorio-update.zip" -OutFile $zip -UseBasicParsing
     $tmp=Join-Path $env:TEMP ('consultorio-update-'+[guid]::NewGuid().ToString('N'))
     Expand-Archive -Path $zip -DestinationPath $tmp -Force
     $source=$tmp
