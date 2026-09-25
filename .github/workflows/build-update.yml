@@ -1,0 +1,29 @@
+name: Build update package
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ZIP from base64 chunks
+        shell: bash
+        run: |
+          set -e
+          mkdir -p /tmp/v26
+          cat releases/chunks/*.b64 > /tmp/v26/package.b64
+          base64 -d /tmp/v26/package.b64 > releases/consultorio-update.zip
+          unzip -t releases/consultorio-update.zip
+      - name: Commit package
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f releases/consultorio-update.zip
+          git diff --cached --quiet && exit 0
+          git commit -m "Gera pacote de atualização V26"
+          git push
