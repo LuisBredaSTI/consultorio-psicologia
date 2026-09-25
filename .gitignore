@@ -1,0 +1,14 @@
+# Dados locais e sensíveis
+**/data/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+*.zip
+*.7z
+*.exe
+runtime/
+
+# Windows
+Thumbs.db
+Desktop.ini
