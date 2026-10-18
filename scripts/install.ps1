@@ -8,7 +8,7 @@ if(Test-Path (Join-Path $pkg 'data')) { New-Item -ItemType Directory -Force (Joi
 New-Item -ItemType Directory -Force (Join-Path $InstallRoot 'scripts') | Out-Null
 Copy-Item (Join-Path $pkg 'scripts\launcher.ps1') (Join-Path $InstallRoot 'scripts\launcher.ps1') -Force
 $bat=Join-Path $InstallRoot 'INICIAR.bat'
-Set-Content $bat '@echo off`r`npowershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts/launcher.ps1"' -Encoding ASCII
+Set-Content $bat -Value @('@echo off','powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\launcher.ps1"') -Encoding ASCII
 $desktop=[Environment]::GetFolderPath('Desktop')
 $ws=New-Object -ComObject WScript.Shell
 $sc=$ws.CreateShortcut((Join-Path $desktop 'Consultório Psicologia.lnk'))
