@@ -5,6 +5,7 @@ const { DatabaseSync } = require('node:sqlite');
 
 const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
+const APP_VERSION = (() => { try { return JSON.parse(fs.readFileSync(path.join(ROOT,'version.json'),'utf8')); } catch { return { version:'0.0.0', channel:'' }; } })();
 const DATA_DIR = process.env.CONSULTORIO_DATA_DIR || path.join(ROOT, '..', 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 const db = new DatabaseSync(path.join(DATA_DIR, 'consultorio.db'));
@@ -174,7 +175,7 @@ function unpaidSessionRows() {
 
 async function api(req,res,url) {
   try {
-    if (url.pathname==='/api/health' && req.method==='GET') return json(res,200,{ok:true,runtime:'Node.js',sqlite:'node:sqlite',version:'15.0.0'});
+    if (url.pathname==='/api/health' && req.method==='GET') return json(res,200,{ok:true,runtime:'Node.js',sqlite:'node:sqlite',version:APP_VERSION.version,channel:APP_VERSION.channel});
 
     // Patients
     if (url.pathname==='/api/pacientes' && req.method==='GET') {

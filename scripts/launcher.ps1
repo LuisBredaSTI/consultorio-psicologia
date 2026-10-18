@@ -11,7 +11,7 @@ function Read-Version {
   if (Test-Path $VersionFile) { return (Get-Content $VersionFile -Raw | ConvertFrom-Json).version }
   return '0.0.0'
 }
-function Version-Parts($v) { return ($v.TrimStart('v') -split '.') | ForEach-Object {[int]$_} }
+function Version-Parts($v) { return ($v.TrimStart('v') -split '\.') | ForEach-Object {[int]$_} }
 function Is-Newer($a,$b) {
   $pa=Version-Parts $a; $pb=Version-Parts $b
   for($i=0;$i -lt 3;$i++){ $x=if($i -lt $pa.Count){$pa[$i]}else{0}; $y=if($i -lt $pb.Count){$pb[$i]}else{0}; if($x -gt $y){return $true}; if($x -lt $y){return $false} }
