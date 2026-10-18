@@ -603,7 +603,7 @@ const server=http.createServer(async(req,res)=>{
   if(url.pathname.startsWith('/api/')) return api(req,res,url);
   const file=url.pathname==='/'?path.join(ROOT,'public','index.html'):path.join(ROOT,'public',url.pathname.replace(/^\/+/,''));
   if(!file.startsWith(path.join(ROOT,'public'))) return res.writeHead(403).end();
-  fs.readFile(file,(err,data)=>{if(err)return res.writeHead(404).end('Not found');res.writeHead(200,{'Content-Type':mime[path.extname(file)]||'application/octet-stream'});res.end(data);});
+  fs.readFile(file,(err,data)=>{if(err)return res.writeHead(404).end('Not found');res.writeHead(200,{'Content-Type':mime[path.extname(file)]||'application/octet-stream','Cache-Control':'no-cache'});res.end(data);});
 });
 server.listen(PORT,()=>console.log(`Consultório rodando em http://localhost:${PORT}`));
 process.on('SIGINT',()=>{db.close();process.exit(0)});
