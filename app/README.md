@@ -1,5 +1,9 @@
-# Consultório de Psicologia
+# Consultório de Psicologia — V28.0.0 (teste)
 
-Versão 26.0.0. Aplicação local para Windows.
+- Recorrência quinzenal calculada a cada 15 dias a partir da data de referência.
+- Sessões `Desmarcou` não entram no cálculo financeiro e não geram pergunta de cobrança.
+- O slot de sessão desmarcada pode ser reutilizado, mantendo uma indicação visual cinza.
+- Cadastro preserva e permite editar telefone, e-mail e observações.
+- Ícone da aplicação incluído.
 
-O banco de dados fica fora dos arquivos do programa, em `data/consultorio.db`, para permitir atualizações sem perder os dados.
+Este pacote não contém dados de pacientes.

@@ -1,9 +1,14 @@
 {
   "name": "consultorio-psicologia",
-  "version": "26.0.0",
+  "version": "28.0.0",
   "private": true,
   "description": "Controle administrativo e financeiro de consultório psicológico",
   "main": "server.js",
-  "scripts": {"start": "node server.js", "dev": "node --watch server.js"},
-  "engines": {"node": ">=22.5.0"}
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  }
 }

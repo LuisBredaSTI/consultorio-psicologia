@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<link rel="icon" href="/consultorio.ico" type="image/x-icon">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Consultório • Agenda</title>
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--line:#e3e6ec;--text:#20242c;--muted:#6b7280;--accent:#5749ad;--green:#e4f3e7;--blue:#e8f1ff;--yellow:#fff4d2;--red:#ffe5e5;--gray:#eef0f3}
+*{box-sizing:border-box}body{font-family:Inter,Segoe UI,Arial,sans-serif;margin:0;background:var(--bg);color:var(--text);font-size:13px}
+header{height:56px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 18px;position:sticky;top:0;z-index:10}header strong{font-size:17px}header span{font-size:12px;color:var(--muted)}
+.layout{display:flex;min-height:calc(100vh - 56px)}nav{width:170px;background:#fff;border-right:1px solid var(--line);padding:10px;flex:none}nav button{display:block;width:100%;padding:10px 11px;margin:3px 0;border:0;background:transparent;text-align:left;border-radius:8px;cursor:pointer;font-size:13px;color:#333}nav button:hover,nav button.active{background:#f0edff;color:#3e328e;font-weight:600}
+main{flex:1;padding:14px;min-width:0;margin-left:170px}section.hidden{display:none}.toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.toolbar h1{margin:0 12px 0 0;font-size:20px}.toolbar input,.toolbar button,select,input,textarea{font:inherit}input,select,textarea{border:1px solid #d1d5db;border-radius:7px;padding:7px 9px;background:#fff}button{cursor:pointer}.primary{background:#262332;color:#fff;border:0;border-radius:7px;padding:8px 11px}.secondary{background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:8px 11px}.danger{color:#a33;border-color:#e5baba}.iconbtn{border:1px solid #ddd;background:#fff;border-radius:7px;padding:5px 8px}.muted{color:var(--muted)}
+.calendar{background:#fff;border:1px solid var(--line);border-radius:10px;overflow:auto}.calhead,.calbody{display:grid;grid-template-columns:var(--time-col,55px) repeat(7,minmax(var(--day-width,120px),1fr));min-width:900px}.calhead>div{padding:7px 5px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:#fafafa}.calhead .dayhead{text-align:center;font-weight:700;font-size:11px}.calhead .dayhead small{display:block;color:var(--muted);font-weight:500;margin-top:1px}.timecell{height:var(--row-height,55px);border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-size:10px;color:var(--muted);padding:4px;text-align:right;background:#fafafa}.slot{height:var(--row-height,55px);border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:3px;position:relative;background:#fff}.slot:hover{background:#fbfbff}.slot.locked{background:#f0f1f3}.slot.locked:after{content:'🔒';position:absolute;right:4px;top:4px;font-size:10px}.slot.empty{cursor:pointer}.slot.empty:hover{outline:2px dashed #c8c0ef;outline-offset:-2px}.appointment{height:100%;min-width:0;border-radius:7px;padding:2px 4px;border:1px solid #d9dbe1;display:flex;flex-direction:column;gap:1px;background:#f8f9fb;overflow:hidden}
+.appointment .patient{flex:0 0 16px;line-height:16px;min-height:16px}
+.appointment .appt-actions{flex:0 0 20px;height:20px;min-height:20px}
+.appointment .appt-actions select{height:18px;padding:1px 3px}
+.appointment .note{flex:0 0 18px;height:18px;min-height:18px;padding:2px 4px}.appointment[draggable=true]{cursor:grab}.appointment.done{background:var(--gray);color:#858a93}.appointment.done .patient{color:#818690}.appointment.status-agendada{border-left:3px solid #a6a9b1}.appointment.status-ca{background:var(--blue)}.appointment.status-ch{background:var(--yellow)}.appointment.status-faltou{background:var(--red)}.patient{font-weight:700;font-size:11px;line-height:13px;min-height:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.appt-actions{display:flex;gap:3px;align-items:center}.appt-actions select{font-size:9px;padding:2px;min-width:0;flex:1}.appt-actions a{font-size:9px;color:#4b3ea1;text-decoration:underline;white-space:nowrap}.note{font-size:9px;line-height:14px;color:#6d7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.daylocked{background:#f1f1f1!important}.history{margin-top:8px}.history details{background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px}.history table{margin-top:6px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px}.annual-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.annual-title h2{margin:0;font-size:15px}.annual-summary{overflow:auto}.annual-summary table{min-width:780px}.annual-summary tfoot td{font-weight:700;background:#f7f8fa}.annual-summary .num{text-align:right;white-space:nowrap}.annual-summary .alert{color:#9b6200}.annual-summary .reag{color:#4c3f9b}
+table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:7px 8px;border-bottom:1px solid #eee;text-align:left;font-size:12px}th{background:#fafafa}.right{text-align:right}.patient-link{border:0;background:none;padding:0;text-decoration:underline;color:#4b3ea1;cursor:pointer}.patient-total{font-size:15px;font-weight:700}.patient-filter{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.filterinput{width:100%;border:0;border-bottom:1px solid #dfe2e7;border-radius:0;padding:5px 3px;background:transparent;font-size:11px}.filterinput:focus{outline:none;border-bottom-color:#5749ad}
+.badge{display:inline-block;padding:3px 6px;border-radius:999px;font-size:10px}.badge.on{background:#e4f3e7;color:#256b39}.badge.off{background:#eee;color:#666}.actions{white-space:nowrap}.actions button{margin-right:4px}.modalback{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:30}.modal{background:#fff;border-radius:12px;width:min(760px,94vw);max-height:90vh;overflow:auto;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.2)}.modal h2{margin:0 0 12px;font-size:18px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.formgrid .full{grid-column:1/-1}.modal label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:#555}.modalfooter{display:flex;justify-content:flex-end;gap:7px;margin-top:14px}.hidden{display:none!important}.toast{position:fixed;right:15px;bottom:15px;background:#222;color:#fff;padding:10px 12px;border-radius:7px;z-index:50;display:none}.small{font-size:11px}.kpirow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.kpi{border:1px solid var(--line);border-radius:8px;padding:9px;background:#fff}.kpi b{display:block;font-size:11px;color:var(--muted)}.kpi strong{display:block;font-size:17px;margin-top:4px}.clicknum{border:0;background:transparent;color:#4b3ea1;text-decoration:underline;font-weight:700;padding:0;cursor:pointer}.finance-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}.finance-cards .kpi{min-height:82px;text-align:left;position:relative;overflow:hidden}.finance-cards .kpi b{font-size:11px}.finance-cards .kpi strong{font-size:18px}.finance-icon{font-size:22px;float:right;opacity:.75}.finance-charts{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:10px}.chart-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px;min-width:0}.chart-card h3{font-size:13px;margin:0 0 10px}.bar-row{display:grid;grid-template-columns:75px 1fr 80px;gap:7px;align-items:center;margin:7px 0;font-size:10px}.bar{height:9px;background:#ececf2;border-radius:99px;overflow:hidden}.bar>i{display:block;height:100%;background:#6b5bb5;border-radius:99px}.mini-stat{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #eee;font-size:11px}.mini-stat:last-child{border-bottom:0}.finance-cards .kpi{cursor:pointer}.finance-month-table td,.finance-month-table th{font-size:11px}.finance-month-table button{font-size:11px}.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.checklist{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.checklist label{display:flex;gap:5px;align-items:center;font-size:11px}.history-modal table{margin-top:8px}.history-modal tr.session-paid{background:#e4f3e7}.history-modal tr.session-paid td{background:#e4f3e7}.history-modal .num{text-align:right}.patient-history-note{color:#555;font-size:11px}.agenda-settings-note{font-size:11px;color:var(--muted)}.cancelled-ghost{margin-top:2px;padding:3px 5px;background:#eeeeef;color:#92949a;border:1px dashed #c9cbd2;border-radius:5px;font-size:9px;text-decoration:line-through;cursor:pointer}.repeat-check{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start;gap:8px!important}.repeat-check input{margin:0;flex:0 0 auto}.personal-event{height:100%;border-radius:7px;padding:5px 6px;background:#e9e9ee;border:1px solid #c9cbd2;color:#50545d;cursor:pointer;overflow:hidden}.personal-event b{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.personal-event small{font-size:9px;color:#777}.width-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.width-grid label{display:flex;align-items:center;gap:7px}.width-grid input{flex:1}.columns-chart{height:190px;display:flex;align-items:flex-end;gap:2px;padding:6px 1px 0;border-bottom:1px solid #e5e7eb;min-width:0}.col-item{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;min-width:0}.chart-click{border:0;background:transparent;padding:0;cursor:pointer}.col-item .col{width:70%;max-width:34px;background:#6b5bb5;border-radius:4px 4px 0 0;min-height:4px}.col-item span{font-size:9px;color:#6b7280;margin-top:4px;white-space:nowrap}.col-rec{background:#49a66a!important}.extract-month{border-bottom:1px solid #eceef2;padding-bottom:14px;margin-bottom:16px}.extract-month-title{font-size:15px;font-weight:800;margin-bottom:10px}.extract-section-title{font-size:10px;font-weight:800;color:#6b7280;text-transform:uppercase;margin:9px 0 3px}.month-balance{display:flex;justify-content:space-between;margin-top:10px;padding:8px 10px;background:#f7f8fa;border-radius:8px;font-weight:700}.final-balance{display:flex;justify-content:space-between;margin-top:15px;padding:13px 14px;background:#f0edf9;border-radius:10px;font-size:16px;font-weight:800}.col-value{font-size:8px;color:#6b7280;height:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55px}.launch-panel{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px;overflow:auto;max-height:520px}.launch-panel h2{font-size:15px;margin:0 0 8px;position:sticky;top:0;background:#fff;padding-bottom:6px;z-index:2}.launch-panel .launch-total{position:sticky;top:30px;z-index:2}.launch-total{display:flex;justify-content:flex-end;align-items:center;gap:10px;background:#f7f8fa;border:1px solid #eceef2;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:12px}.launch-total strong{font-size:16px}.launch-table{min-width:980px}.launch-table th{vertical-align:top}.launch-table .filterinput{margin-top:5px}.launch-table td{vertical-align:middle}.launch-input,.launch-select{width:100%;min-width:70px;padding:5px 6px;border:1px solid transparent;border-radius:5px;background:transparent;font-size:11px}.launch-input:hover,.launch-select:hover,.launch-input:focus,.launch-select:focus{border-color:#d1d5db;background:#fff;outline:none}.launch-input.note{min-width:160px}.launch-status{min-width:150px}.launch-patient{min-width:170px}.launch-value{min-width:90px;text-align:right}.launch-date{min-width:115px}.launch-time{min-width:80px}.launch-table .saving{opacity:.55}.launch-empty{text-align:center;padding:18px!important;color:var(--muted)}
+.payment-extract{width:min(380px,100%);margin:0 auto;background:#fff;border:1px solid #e1e5ec;border-radius:16px;overflow:hidden;box-shadow:0 8px 28px rgba(25,30,45,.12);text-align:left}.payment-extract .ph{padding:18px 20px;background:#f6f3ff}.payment-extract .ph b{font-size:16px}.payment-extract .ph small{display:block;color:#6b7280;margin-top:4px}.payment-extract .pe-body{padding:14px 16px}.payment-extract .pe-row{display:flex;justify-content:space-between;gap:5px;padding:6px 0;border-bottom:1px solid #eee}.payment-extract .pe-row:last-child{border-bottom:0}.payment-extract .pe-total{margin-top:10px;padding:13px 14px;background:#f7f8fa;border-radius:10px}.payment-extract .pe-total strong{font-size:18px}.payment-extract .pe-foot{padding:10px 20px;background:#fafafa;color:#7b8190;font-size:10px}.image-help{font-size:11px;color:#6b7280;margin-top:7px}.wa-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+
+/* V22 - cabeçalhos e menu fixos */
+.layout{position:relative}
+nav{position:fixed;left:0;top:56px;width:170px;height:calc(100vh - 56px);overflow-y:auto;z-index:8}
+#pacientes .panel{overflow:visible}
+#patientTable{overflow:visible}
+#patientTable table thead th{position:sticky;top:56px;z-index:7;background:#fafafa;box-shadow:0 1px 0 var(--line)}
+.launch-panel{position:relative}
+.launch-panel .launch-total{top:0;z-index:6}
+.launch-panel h2{top:42px;z-index:5}
+.launch-panel .launch-table thead th{position:sticky;top:82px;z-index:4;background:#fafafa;box-shadow:0 1px 0 var(--line)}
+.col-value{font-size:9px;font-weight:700;max-width:100%;overflow:hidden;text-overflow:clip;height:16px;line-height:16px;white-space:nowrap}
+.columns-chart{height:190px;overflow:visible;gap:2px;padding:6px 1px 0;min-width:0}
+@media(max-width:900px){.finance-charts{grid-template-columns:1fr}.finance-cards{grid-template-columns:repeat(2,1fr)}nav{position:fixed;left:0;top:56px;height:calc(100vh - 56px);width:55px;padding:6px 5px;z-index:9}nav button{font-size:0;text-align:center;padding:10px 5px}nav button:first-letter{font-size:18px}main{padding:9px;margin-left:55px}.calhead,.calbody{grid-template-columns:45px repeat(7,minmax(105px,1fr))}.calhead,.calbody{min-width:780px}.kpirow{grid-template-columns:repeat(2,1fr)}header span{display:none}}
+.finance-launch-grid{display:grid;grid-template-columns:1fr;gap:18px}.finance-launch-grid table{font-size:11px}.finance-launch-grid td,.finance-launch-grid th{font-size:11px}
+
+/* Ajustes do histórico do paciente */
+.history-modal .launch-panel{max-height:300px;overflow:auto;padding:6px 8px;}
+.history-modal .launch-panel + h3{margin-top:12px!important;}
+.history-modal .launch-table{min-width:0;width:100%;table-layout:fixed;}
+.history-modal .launch-table thead th{position:sticky;top:0;z-index:8;background:#fafafa;box-shadow:0 1px 0 var(--line);}
+.history-modal .launch-table th,.history-modal .launch-table td{padding:4px 5px;font-size:11px;}
+.history-modal .launch-table th:nth-child(1),.history-modal .launch-table td:nth-child(1){width:105px;}
+.history-modal .launch-table th:nth-child(2),.history-modal .launch-table td:nth-child(2){width:70px;}
+.history-modal .launch-table th:nth-child(3),.history-modal .launch-table td:nth-child(3){width:145px;}
+.history-modal .launch-table th:nth-child(4),.history-modal .launch-table td:nth-child(4){width:85px;}
+.history-modal .launch-table th:nth-child(5),.history-modal .launch-table td:nth-child(5){width:auto;}
+.history-modal .launch-table .launch-input,.history-modal .launch-table .launch-select{min-width:0;width:100%;box-sizing:border-box;padding:3px 4px;font-size:10px;}
+.history-modal .launch-table .launch-input.note{min-width:0;white-space:normal;overflow-wrap:anywhere;}
+.history-modal .launch-table textarea.launch-input.note{resize:vertical;min-height:28px;line-height:13px;}
+.history-modal h3{margin-bottom:5px;}
+.history-modal .launch-panel + h3 + .launch-panel{max-height:220px;}
+
+.patient-attachments{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}.patient-attachments-list{display:flex;flex-direction:column;gap:5px;max-height:150px;overflow:auto}.patient-attachment-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;background:#fafafa;border:1px solid var(--line);border-radius:7px;font-size:11px}.patient-attachment-row .meta{color:#777}.patient-attachment-row a{color:#3159a6;text-decoration:none}.patient-attachment-row button{padding:3px 6px;font-size:10px}
+
+.finance-forecast{margin:0 0 12px}.forecast-box{background:var(--panel,#fff);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.04)}.forecast-head{display:flex;justify-content:space-between;align-items:center;gap:16px}.forecast-head h2{font-size:15px;margin:0 0 3px}.forecast-head small,.forecast-row small{color:#777}.forecast-head>strong{font-size:24px;color:#1769d1;white-space:nowrap}.forecast-list{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}.forecast-row{border:1px solid var(--line);border-radius:9px;padding:9px 10px;background:#fafafa;display:flex;flex-direction:column;gap:4px}.forecast-row small{font-size:10px}.forecast-row span{font-size:11px}.forecast-row span strong{font-size:12px}@media(max-width:900px){.forecast-list{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header><strong>🧠 Consultório</strong><span>Controle administrativo • V27 Teste</span></header>
+<div class="layout">
+<nav>
+<button class="active" onclick="show('inicio',this)">🏠 <span>Agenda</span></button>
+<button onclick="show('pacientes',this)">👤 <span>Pacientes</span></button>
+<button onclick="show('financeiro',this)">💰 <span>Financeiro</span></button>
+</nav>
+<main>
+<section id="inicio">
+<div class="toolbar"><h1>Agenda da semana</h1><button class="secondary" onclick="changeWeek(-1)">←</button><button class="secondary" onclick="goToday()">Hoje</button><button class="secondary" onclick="changeWeek(1)">→</button><div class="weektitle" id="weekTitle"></div><button class="secondary" onclick="openLockDay()">🔒 Travar período</button><button class="secondary" onclick="openPopulateAgenda()">📅 Preencher agenda</button><button class="secondary" onclick="openAgendaSettings()">⚙️ Ajustar agenda</button></div>
+<div class="calendar"><div id="calHead" class="calhead"></div><div id="calBody" class="calbody"></div></div>
+<div class="history" id="historyBox"></div>
+</section>
+<section id="pacientes" class="hidden">
+<div class="toolbar"><h1>Pacientes</h1><button class="primary" onclick="openPatientModal()">＋ Novo paciente</button><button class="secondary" onclick="downloadPatientReport()">📊 Relatório Excel</button><label class="small">Histórico a partir de <input id="patientHistoryFrom" type="date" onchange="savePatientHistoryFrom();loadPatients()"></label><select id="patientStatus" onchange="loadPatients()"><option value="ativos">Ativos</option><option value="inativos">Inativos</option><option value="todos">Todos</option></select></div>
+<div class="panel"><div class="patient-filter"><span class="patient-total" id="patientTotal">R$ 0,00</span><span class="muted">pendente no total</span></div><div id="patientTable" style="margin-top:8px"></div></div>
+<div class="panel hidden" id="patientDetail"></div>
+</section>
+<section id="financeiro" class="hidden"><div class="toolbar"><h1>Financeiro</h1><input id="mesFin" type="month" onchange="loadFinance()"><button class="primary" onclick="openPaymentModal()">＋ Registrar pagamento</button><button class="secondary" onclick="loadFinance()">Atualizar</button><label class="small">Ano <select id="financeYear" onchange="loadFinanceAnnual()"></select></label></div><div id="financeForecast" class="finance-forecast"></div><div id="financeCards" class="finance-cards"></div><div class="panel"><h2 style="font-size:15px;margin:0 0 8px">Resumo anual</h2><div id="financeAnnual" class="annual-summary"></div></div></section>
+
+
+</main></div>
+<div id="modalRoot"></div><div id="toast" class="toast"></div>
+<script>
+const $=id=>document.getElementById(id); const money=v=>(Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const STATUS=[['Agendada','agendada'],['Realizada','realizada'],['Desmarcou','ca'],['Faltou','faltou']];
+const DAYS=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']; const MONTHS=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const TIMES=[]; for(let h=7;h<=20;h++) TIMES.push(String(h).padStart(2,'0')+':00');
+let weekStart=monday(new Date()),agendaData={sessoes:[],locks:[],eventos:[]};
+function pad(n){return String(n).padStart(2,'0')} function iso(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())} function dmy(v){if(!v)return '—';const p=String(v).slice(0,10).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:String(v)} function monday(d){let x=new Date(d);x.setHours(12,0,0,0);let day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x} function addDays(d,n){let x=new Date(d);x.setDate(x.getDate()+n);return x} function fmt(d){return dmy(iso(d))}
+function show(id,btn){document.querySelectorAll('main>section').forEach(s=>s.classList.add('hidden'));$(id).classList.remove('hidden');document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');if(id==='inicio'){loadAgenda()}if(id==='pacientes')loadPatients();if(id==='financeiro')loadFinance();if(id==='lancamentos')loadLaunches()}
+function toast(msg){$('toast').textContent=msg;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',2600)} function changeWeek(n){weekStart=addDays(weekStart,n*7);loadAgenda()} function goToday(){weekStart=monday(new Date());loadAgenda()}
+function lockFor(date,time){return agendaData.locks.find(l=>l.lock_date===date && (l.start_time===null||l.start_time===time))} function slotSessions(date,time){return agendaData.sessoes.filter(s=>s.session_date===date&&s.session_time&&s.session_time.slice(0,2)===time.slice(0,2)&&!Number(s.slot_removed))} function sessionFor(date,time){return slotSessions(date,time).find(s=>s.status!=='Desmarcou')} function cancelledGhost(date,time){return slotSessions(date,time).find(s=>s.status==='Desmarcou')} function eventFor(date,time){return (agendaData.eventos||[]).find(e=>e.event_date===date&&e.event_time===time)}
+async function loadAgenda(){const start=iso(weekStart),end=iso(addDays(weekStart,6));const d=await fetch(`/api/agenda?start=${start}&end=${end}`).then(r=>r.json());agendaData=d;$('weekTitle').textContent=`${fmt(weekStart)} – ${fmt(addDays(weekStart,6))}`;renderCalendar();renderHistory() ;}
+function getAgendaSettings(){try{return JSON.parse(localStorage.getItem('agendaSettings')||'{}')}catch{return {}}}
+const defaultAgendaSettings={version:2,hiddenDays:[5,6],hiddenTimes:[],rowHeight:60,dayWidths:{0:120,1:120,2:120,3:120,4:120,5:120,6:120},timeCol:55};
+function agendaSettings(){
+  const raw=getAgendaSettings();
+  if(Number(raw.version||0)<2){localStorage.removeItem('agendaSettings');return {...defaultAgendaSettings,dayWidths:{...defaultAgendaSettings.dayWidths}}}
+  return {...defaultAgendaSettings,...raw,dayWidths:{...defaultAgendaSettings.dayWidths,...(raw.dayWidths||{})}};
+}
+function applyAgendaCss(){const a=agendaSettings();document.documentElement.style.setProperty('--row-height',a.rowHeight+'px');document.documentElement.style.setProperty('--day-width',a.dayWidths[0]+'px');document.documentElement.style.setProperty('--time-col',a.timeCol+'px')}
+function visibleTimes(){const a=agendaSettings();return TIMES.filter(t=>!a.hiddenTimes.includes(t))}
+function visibleDayOffsets(){const a=agendaSettings();return [0,1,2,3,4,5,6].filter(i=>!a.hiddenDays.includes(i))}
+function renderCalendar(){
+  applyAgendaCss();
+  const a=agendaSettings(), offsets=visibleDayOffsets();
+  let h='<div></div>';
+  for(const offset of offsets){
+    const d=addDays(weekStart,offset),ds=iso(d),dayLock=agendaData.locks.find(l=>l.lock_date===ds&&l.start_time===null);
+    h+=`<div class="dayhead ${dayLock?'daylocked':''}" style="min-width:${a.dayWidths[offset]}px">${DAYS[d.getDay()]}<small>${fmt(d)} ${dayLock?'🔒':''}</small></div>`;
+  }
+  const cols=offsets.map(i=>`${a.dayWidths[i]}px`).join(' ');
+  const grid=`var(--time-col) ${cols}`;
+  $('calHead').style.gridTemplateColumns=grid;
+  $('calBody').style.gridTemplateColumns=grid;
+  $('calHead').innerHTML=h;
+  let b='';
+  for(const t of visibleTimes()){
+    b+=`<div class="timecell">${t}</div>`;
+    for(const offset of offsets){
+      const d=addDays(weekStart,offset),ds=iso(d),lock=lockFor(ds,t),s=sessionFor(ds,t),ev=eventFor(ds,t);
+      b+=`<div class="slot ${lock?'locked':''} ${!s&&!lock&&!ev?'empty':''}" style="min-width:${a.dayWidths[offset]}px" ondragover="allowDrop(event)" ondrop="dropSlot(event,'${ds}','${t}')" onclick="emptySlotClick(event,'${ds}','${t}')" oncontextmenu="slotContextMenu(event,'${ds}','${t}');return false;">${lock?`<div class="small"><b>🔒</b><br>${esc(lock.reason)}<br><button class="secondary" style="font-size:9px;padding:2px 5px;margin-top:4px" onclick="unlock(event,${lock.id})">Destravar</button></div>`:s?appointment(s)+(cancelledGhost(ds,t)?cancelledGhostHtml(cancelledGhost(ds,t)):''):cancelledGhost(ds,t)?cancelledGhostHtml(cancelledGhost(ds,t)):ev?personalEvent(ev):''}</div>`;
+    }
+  }
+  $('calBody').innerHTML=b;
+}
+function cancelledGhostHtml(s){return `<div class="cancelled-ghost" title="Paciente desmarcou; horário disponível">${esc(s.patient_name)} — desmarcou</div>`} function appointment(s){const done=['Realizada','Faltou'].includes(s.status);const cls=s.status==='Realizada'?'done':s.status==='Desmarcou'?'status-ca':'status-faltou';const canDrag=!done&&!Number(s.slot_removed);let options=STATUS.map(x=>`<option value="${x[0]}" ${s.status===x[0]?'selected':''}>${x[0]}</option>`).join('');let react=(s.status==='Desmarcou'||s.status==='Faltou')?`<a href="#" onclick="openReschedule(event,${s.id})">reagendar?</a>`:'';return `<div class="appointment ${cls}" draggable="${canDrag}" ondragstart="dragStart(event,${s.id})" onclick="event.stopPropagation()"><div class="patient" title="${esc(s.patient_name)}">${esc(s.patient_name)}</div><div class="appt-actions"><select onchange="statusChange(${s.id},this.value)" ${s.status==='Realizada'?'disabled':''}>${options}</select>${react}</div><input class="note" value="${esc(s.notes||'')}" placeholder="observação" onblur="saveNote(${s.id},this.value)" onclick="event.stopPropagation()"></div>`}
+function allowDrop(e){e.preventDefault()} let draggedId=null;function dragStart(e,id){draggedId=id;e.dataTransfer.setData('text/plain',String(id))}
+async function dropSlot(e,date,time){e.preventDefault();e.stopPropagation();const id=Number(e.dataTransfer.getData('text/plain')||draggedId);if(!id)return;const s=agendaData.sessoes.find(x=>x.id===id);if(!s||['Realizada','Faltou'].includes(s.status))return toast('Sessões Realizada e Faltou não podem ser arrastadas.');if(sessionFor(date,time))return toast('Este horário já está ocupado.');if(lockFor(date,time))return toast('Este horário está travado.');const r=await fetch('/api/sessoes/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:date,horario:time})});const j=await r.json();if(!r.ok)return toast(j.error||'Não foi possível remanejar.');toast('Sessão remanejada.');loadAgenda()}
+function slotContextMenu(e,date,time){
+  e.preventDefault();e.stopPropagation();
+  const s=sessionFor(date,time), ev=eventFor(date,time), lock=lockFor(date,time);
+  if(s){
+    if(confirm(`Excluir o agendamento de ${s.patient_name} em ${dmy(date)} às ${time}?`)){
+      fetch('/api/sessoes/'+s.id+'/sem-reagendamento',{method:'POST'}).then(async r=>{const j=await r.json();if(!r.ok)return toast(j.error||'Não foi possível excluir o agendamento.');toast('Agendamento excluído do slot.');loadAgenda()});
+    }
+    return;
+  }
+  if(ev){deletePersonalEvent({stopPropagation(){},preventDefault(){}},ev.id);return;}
+  if(lock){return;}
+  lockSlot(e,date,time);
+}
+function emptySlotClick(e,date,time){if(e.target.closest('.appointment')||e.target.closest('.personal-event'))return;if(lockFor(date,time))return;openNewSessionChoice(date,time)}
+function openNewSessionChoice(date,time){openModal('Novo compromisso',`<p>O que deseja incluir em <b>${dmy(date)} às ${time}</b>?</p>`,`<button class="secondary" onclick="openNewSession('${date}','${time}')">👤 Sessão de paciente</button><button class="primary" onclick="openPersonalEvent('${date}','${time}')">🏊 Compromisso pessoal</button>`)}
+function openPersonalEvent(date,time){openModal('Novo compromisso pessoal',`<div class="formgrid"><label class="full">Título<input id="eTitle" placeholder="Ex.: Natação"></label><label>Data<input id="eDate" type="date" value="${date}"></label><label>Horário<input id="eTime" type="time" value="${time}"></label><label class="full">Observação<textarea id="eNote" rows="2"></textarea></label><label class="full repeat-check"><input id="eRepeat" type="checkbox"><span>Repetir nas próximas semanas no mesmo dia e horário</span></label></div>`,`<button class="secondary" onclick="closeModal()">Cancelar</button><button class="primary" onclick="savePersonalEvent()">Salvar</button>`)}
+async function savePersonalEvent(){const b={data:$('eDate').value,horario:$('eTime').value,titulo:$('eTitle').value,observacao:$('eNote').value,repetir:$('eRepeat').checked,semanas:16};if(!b.titulo.trim())return toast('Informe o título.');const r=await fetch('/api/eventos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)return toast(j.error||'Não foi possível criar o compromisso.');closeModal();toast(b.repetir?'Compromisso criado nas próximas 16 semanas.':'Compromisso criado.');loadAgenda()}
+async function deletePersonalEvent(e,id){e.stopPropagation();const ev=agendaData.eventos.find(x=>x.id===id);if(!ev)return;const scope=ev.series_id?prompt('Excluir: 1 = somente este compromisso | 2 = toda a série','1'):'1';if(!scope)return;if(!['1','2'].includes(scope))return toast('Escolha 1 ou 2.');const r=await fetch('/api/eventos/'+id+'?scope='+(scope==='2'?'series':'one'),{method:'DELETE'});if(r.ok){toast(scope==='2'?'Toda a série foi excluída.':'Compromisso excluído.');loadAgenda()}else toast('Não foi possível excluir.')}
+function personalEvent(e){return `<div class="personal-event" onclick="deletePersonalEvent(event,${e.id})" title="Clique para excluir"><b>🏊 ${esc(e.title)}</b><small>compromisso pessoal</small></div>`}
+function renderHistory(){const past=agendaData.sessoes.filter(s=>!s.session_time||Number(s.slot_removed));if(!past.length){$('historyBox').innerHTML='';return}let rows=past.map(s=>`<tr><td>${dmy(s.session_date)}</td><td>${s.session_time||'—'}</td><td>${esc(s.patient_name)}</td><td>${esc(s.status)}</td><td>${money(s.value)}</td></tr>`).join('');$('historyBox').innerHTML=`<details><summary>Histórico / sessões anteriores ou liberadas (${past.length})</summary><table><thead><tr><th>Data</th><th>Hora</th><th>Paciente</th><th>Status</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table></details>`}
+function openModal(title,body,actions=''){$('modalRoot').innerHTML=`<div class="modalback" onclick="if(event.target===this)closeModal()"><div class="modal"><h2>${title}</h2>${body}${actions?`<div class="modalfooter">${actions}</div>`:''}</div></div>`}function closeModal(){$('modalRoot').innerHTML=''}
+async function openNewSession(date,time){const patients=await fetch('/api/pacientes?status=ativos').then(r=>r.json());if(!patients.length)return toast('Cadastre um paciente ativo primeiro.');openModal('Agendar sessão',`<div class="formgrid"><label>Paciente<select id="mPatient">${patients.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label><label>Data<input id="mDate" type="date" value="${date}"></label><label>Horário<input id="mTime" type="time" value="${time}"></label><label class="full">Observação<textarea id="mNote" rows="3"></textarea></label></div>`,`<button class="secondary" onclick="closeModal()">Cancelar</button><button class="primary" onclick="createSession()">Agendar</button>`)}
+async function createSession(){const b={patient_id:Number($('mPatient').value),data:$('mDate').value,horario:$('mTime').value,status:'Agendada',observacao:$('mNote').value};const r=await fetch('/api/sessoes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)return toast(j.error||'Erro');closeModal();toast('Sessão agendada.');loadAgenda()}
+async function statusChange(id,status){const cobrar=false;const r=await fetch('/api/sessoes/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status,slot_removed:0,...(status==='Desmarcou'?{cobrar}:{})})});const j=await r.json();if(!r.ok)return toast(j.error||'Erro');loadAgenda()}
+async function saveNote(id,note){const r=await fetch('/api/sessoes/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({observacao:note})});if(r.ok)toast('Observação salva.');else toast('Não foi possível salvar a observação.')}
+function openReschedule(e,id){e.preventDefault();e.stopPropagation();const s=agendaData.sessoes.find(x=>x.id===id);if(!s)return;openModal('Reagendar sessão',`<p><b>${esc(s.patient_name)}</b><br>Original: ${dmy(s.session_date)} ${s.session_time||''}</p><div class="formgrid"><label>Nova data<input id="rDate" type="date" value="${s.session_date}"></label><label>Novo horário<input id="rTime" type="time" value="${s.session_time||'08:00'}"></label></div><p class="muted">O horário original será liberado e a sessão original ficará preservada no histórico.</p>`,`<button class="secondary" onclick="noReschedule(${id})">Sem reagendamento</button><button class="primary" onclick="doReschedule(${id})">Reagendar</button>`)}
+async function doReschedule(id){const r=await fetch('/api/sessoes/'+id+'/reagendar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:$('rDate').value,horario:$('rTime').value})});const j=await r.json();if(!r.ok)return toast(j.error||'Erro ao reagendar');closeModal();toast('Sessão reagendada.');loadAgenda()}
+async function noReschedule(id){const r=await fetch('/api/sessoes/'+id+'/sem-reagendamento',{method:'POST'});const j=await r.json();if(!r.ok)return toast(j.error||'Erro');closeModal();toast('Sessão liberada e mantida no histórico.');loadAgenda()}
+function openLockDay(){openModal('Travar período da agenda',`<div class="formgrid"><label>Travar de<input id="lockFrom" type="date" value="${iso(weekStart)}"></label><label>Até<input id="lockTo" type="date" value="${iso(addDays(weekStart,6))}"></label><label class="full">Motivo<input id="lockReason" value="Férias"></label></div>`,`<button class="secondary" onclick="closeModal()">Cancelar</button><button class="primary" onclick="saveLockRange()">Travar período</button>`)}
+async function saveLockRange(){const r=await fetch('/api/travar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({inicio:$('lockFrom').value,fim:$('lockTo').value,motivo:$('lockReason').value})});const j=await r.json();if(!r.ok)return toast(j.error||'Erro');closeModal();toast('Período travado.');loadAgenda()}
+async function lockCreate(date,time,reason){const r=await fetch('/api/travar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:date,horario:time,motivo:reason})});const j=await r.json();if(!r.ok)return toast(j.error||'Erro');toast('Agenda travada.');loadAgenda()}
+async function lockSlot(e,date,time){e.stopPropagation();const existing=lockFor(date,time);if(existing)return unlock(e,existing.id);const reason=prompt(`Motivo para travar ${dmy(date)} às ${time}:`);if(!reason)return;await lockCreate(date,time,reason)}
+async function unlock(e,id){e.stopPropagation();if(!confirm('Destravar este período da agenda?'))return;const r=await fetch('/api/travar/'+id,{method:'DELETE'});if(r.ok){toast('Agenda destravada.');loadAgenda()}else toast('Não foi possível destravar.')}
+
+function openPopulateAgenda(){openModal('Preencher agenda',`<p>Preencher a agenda com base no dia e horário preferenciais cadastrados nos pacientes ativos.</p><div class="formgrid"><label>Preencher agenda até<input id="populateUntil" type="date" value="${iso(addDays(new Date(),30))}"></label></div>`,`<button class="secondary" onclick="closeModal()">Cancelar</button><button class="primary" onclick="populateAgenda()">Preencher agenda</button>`)}
+async function populateAgenda(){const fim=$('populateUntil').value;const inicio=iso(new Date());const r=await fetch('/api/agenda/popular',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({inicio,fim})});const j=await r.json();if(!r.ok)return toast(j.error||'Não foi possível preencher a agenda.');closeModal();toast(`Agenda preenchida: ${j.created} sessões criadas.`);loadAgenda()}
+
+// Finance
+function initFinanceYears(){const sel=$('financeYear');if(!sel.options.length){const now=new Date().getFullYear();for(let y=now-3;y<=now+2;y++)sel.add(new Option(y,y));sel.value=now}}
+async function loadFinanceForecast(){
+  const d=await fetch('/api/financeiro/previsao?weeks=4').then(r=>r.json());
+  const rows=d.periodos.map((x,i)=>`<div class="forecast-row"><div><b>Semana ${i+1}</b><small>${dmy(x.inicio)} a ${dmy(x.fim)}</small></div><span>${x.qtd} agend. · <strong>${money(x.valor)}</strong></span></div>`).join('');
+  $('financeForecast').innerHTML=`<div class="forecast-box"><div class="forecast-head"><div><h2>📈 Previsão de faturamento</h2><small>Baseada nos agendamentos das próximas 4 semanas</small></div><strong>${money(d.total)}</strong></div><div class="forecast-list">${rows}</div></div>`;
+}
+async function loadFinance(){
+  const mes=$('mesFin').value||new Date().toISOString().slice(0,7);$('mesFin').value=mes;
+  const d=await fetch('/api/financeiro/resumo?mes='+mes).then(r=>r.json());
+  const cards=[
+    ['💼','Atendimento',money(d.atendimento.valor),'atendimento'],
+    ['📋','À Receber',money(d.devido.valor),'devido'],
+    ['💰','Recebimentos',money(d.recebimentos.valor),'recebimentos'],
+    ['⏰','Atrasados',money(d.atrasados.valor),'atrasados'],
+    ['✅','Sessões realizadas',String(d.realizadas.qtd),'realizadas'],
+    ['⚠️','Desmarcou (cobrável)',`${d.canceladas_hora.qtd} · ${money(d.canceladas_hora.valor)}`,'canceladas_hora'],
+    ['🚫','Faltas',`${d.faltas.qtd} · ${money(d.faltas.valor)}`,'faltas'],
+    ['🔄','Com reagendamento',`${d.reagendadas.qtd} · ${money(d.reagendadas.valor)}`,'reagendadas']
+  ];
+  await loadFinanceForecast();
+  $('financeCards').innerHTML=cards.map(c=>`<button class="kpi" onclick="openFinanceDetails('${c[3]}','${mes}')"><span class="finance-icon">${c[0]}</span><b>${c[1]}</b><strong>${c[2]}</strong></button>`).join('');
+  await loadFinanceAnnual();
+}
+async function renderFinanceLaunches(mes){
+  const [sessions,payments]=await Promise.all([
+    fetch('/api/sessoes?mes='+mes).then(r=>r.json()),
+    fetch('/api/pagamentos?mes='+mes).then(r=>r.json())
+  ]);
+  const billable=sessions.filter(isBillableSession);
+  const sessionRows=billable.map(x=>`<tr><td>${dmy(x.session_date)}</td><td>${esc(x.session_time||'')}</td><td>${esc(x.patient_name)}</td><td>${esc(x.status)}</td><td>${money(x.value)}</td><td>${esc(x.notes||'')}</td><td><button class="secondary" onclick="editFinanceSession(${x.id})">Editar</button></td></tr>`).join('');
+  const payRows=payments.map(x=>`<tr><td>${dmy(x.payment_date)}</td><td>${esc(x.patient_name)}</td><td>${money(x.amount)}</td><td>${esc(x.notes||'')}</td><td><button class="secondary" onclick="editPayment(${x.id})">Editar</button></td></tr>`).join('');
+  $('financeTable').innerHTML=`<div class="finance-launch-grid"><div><h2 style="font-size:15px;margin:0 0 8px">Lançamentos de sessões / cobranças</h2><div class="muted small" style="margin-bottom:8px">Histórico das sessões que geram cobrança. Os lançamentos podem ser editados, inclusive os antigos.</div><table><thead><tr><th>Data</th><th>Hora</th><th>Paciente</th><th>Status</th><th>Valor</th><th>Observação</th><th></th></tr></thead><tbody>${sessionRows||'<tr><td colspan="7" class="muted">Nenhuma sessão cobrável no mês.</td></tr>'}</tbody></table></div><div><h2 style="font-size:15px;margin:14px 0 8px">Pagamentos recebidos</h2><div class="muted small" style="margin-bottom:8px">Histórico dos pagamentos importados e lançados no sistema. Também podem ser editados.</div><table><thead><tr><th>Data</th><th>Paciente</th><th>Valor</th><th>Observação</th><th></th></tr></thead><tbody>${payRows||'<tr><td colspan="5" class="muted">Nenhum pagamento no mês.</td></tr>'}</tbody></table></div></div>`;
+}
+let launchState={sessions:[],payments:[],patients:[],sf:['','','','','',''],pf:['','','',''],from:''};
+function dmyToIso(v){const s=String(v||'').trim();if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)){const [d,m,y]=s.split('/');return `${y}-${m}-${d}`}if(/^\d{2}-\d{2}-\d{4}$/.test(s)){const [d,m,y]=s.split('-');return `${y}-${m}-${d}`}if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;return null}
+function isoToDmy(v){return dmy(v)}
+function filterLaunchRows(){
+  const from=launchState.from||'';
+  const sf=launchState.sf.map(v=>String(v||'').toLowerCase().trim()), pf=launchState.pf.map(v=>String(v||'').toLowerCase().trim());
+  document.querySelectorAll('#launchSessionsBody tr[data-row]').forEach(tr=>{const vals=[tr.dataset.date,tr.dataset.time,tr.dataset.patient,tr.dataset.status,tr.dataset.note,tr.dataset.value];const dateOk=!from||tr.dataset.isodate>=from;tr.style.display=(dateOk&&sf.every((q,i)=>!q||String(vals[i]||'').includes(q)))?'':'none'});
+  document.querySelectorAll('#launchPaymentsBody tr[data-row]').forEach(tr=>{const vals=[tr.dataset.date,tr.dataset.patient,tr.dataset.note,tr.dataset.value];const dateOk=!from||tr.dataset.isodate>=from;tr.style.display=(dateOk&&pf.every((q,i)=>!q||String(vals[i]||'').includes(q)))?'':'none'});
+  updateLaunchVisibleTotals();
+}
+function updateLaunchVisibleTotals(){
+  let total=0;document.querySelectorAll('#launchSessionsBody tr[data-row]').forEach(tr=>{if(tr.style.display!=='none')total+=Number(tr.dataset.amount||0)});const el=$('launchSessionTotal');if(el)el.textContent=money(total);
+  let ptotal=0;document.querySelectorAll('#launchPaymentsBody tr[data-row]').forEach(tr=>{if(tr.style.display!=='none')ptotal+=Number(tr.dataset.amount||0)});const pe=$('launchPaymentTotal');if(pe)pe.textContent=money(ptotal);
+}
+function launchFilter(kind,col,val){launchState[kind][col]=val;filterLaunchRows()}
+function loadLaunchFrom(){const v=localStorage.getItem('launchFrom')||'';if($('launchFrom'))$('launchFrom').value=v;launchState.from=v;return v}
+function filterLaunchFrom(){launchState.from=$('launchFrom').value||'';localStorage.setItem('launchFrom',launchState.from);filterLaunchRows()}
+function patientOptions(selected){return launchState.patients.map(p=>`<option value="${p.id}" ${Number(p.id)===Number(selected)?'selected':''}>${esc(p.name)}</option>`).join('')}
+function launchSessionRow(x){const vals=[isoToDmy(x.session_date),x.session_time||'',x.patient_name||'',x.status||'',x.notes||'',Number(x.value||0).toFixed(2)];return `<tr data-row data-id="${x.id}" data-isodate="${esc(x.session_date||'')}" data-date="${esc(vals[0].toLowerCase())}" data-time="${esc(vals[1].toLowerCase())}" data-patient="${esc(vals[2].toLowerCase())}" data-status="${esc(vals[3].toLowerCase())}" data-note="${esc(vals[4].toLowerCase())}" data-value="${esc(vals[5])}" data-amount="${Number(x.value||0)}"><td><input class="launch-input launch-date" value="${esc(vals[0])}" placeholder="DD/MM/AAAA" onchange="saveLaunchSession(${x.id},this,'date')"></td><td><input class="launch-input launch-time" value="${esc(vals[1])}" placeholder="HH:MM" onchange="saveLaunchSession(${x.id},this,'time')"></td><td><select class="launch-select launch-patient" onchange="saveLaunchSession(${x.id},this,'patient')">${patientOptions(x.patient_id)}</select></td><td><select class="launch-select launch-status" onchange="saveLaunchSession(${x.id},this,'status')">${STATUS.map(([v])=>`<option value="${esc(v)}" ${x.status===v?'selected':''}>${esc(v)}</option>`).join('')}</select></td><td><input class="launch-input note" value="${esc(x.notes||'')}" onchange="saveLaunchSession(${x.id},this,'note')"></td><td><input class="launch-input launch-value" type="number" step="0.01" value="${Number(x.value||0).toFixed(2)}" onchange="saveLaunchSession(${x.id},this,'value')"></td></tr>`}
+function launchPaymentRow(x){const vals=[isoToDmy(x.payment_date),x.patient_name||'',x.notes||'',Number(x.amount||0).toFixed(2)];return `<tr data-row data-id="${x.id}" data-isodate="${esc(x.payment_date||'')}" data-date="${esc(vals[0].toLowerCase())}" data-patient="${esc(vals[1].toLowerCase())}" data-note="${esc(vals[2].toLowerCase())}" data-value="${esc(vals[3])}" data-amount="${Number(x.amount||0)}"><td><input class="launch-input launch-date" value="${esc(vals[0])}" placeholder="DD/MM/AAAA" onchange="saveLaunchPayment(${x.id},this,'date')"></td><td><select class="launch-select launch-patient" onchange="saveLaunchPayment(${x.id},this,'patient')">${patientOptions(x.patient_id)}</select></td><td><input class="launch-input note" value="${esc(x.notes||'')}" onchange="saveLaunchPayment(${x.id},this,'note')"></td><td><input class="launch-input launch-value" type="number" step="0.01" value="${Number(x.amount||0).toFixed(2)}" onchange="saveLaunchPayment(${x.id},this,'value')"></td></tr>`}
+async function loadLaunches(){
+  const [sessions,payments,patients]=await Promise.all([fetch('/api/sessoes').then(r=>r.json()),fetch('/api/pagamentos').then(r=>r.json()),fetch('/api/pacientes?status=todos').then(r=>r.json())]);
+  loadLaunchFrom();
+  launchState.from=$('launchFrom')?.value||launchState.from||'';
+  launchState.sessions=sessions.filter(isBillableSession); launchState.payments=payments; launchState.patients=patients;
+  const s=launchState.sessions,p=launchState.payments;
+  const sh=['Data sessão','Horário sessão','Paciente','Status','Observação','Valor'];
+  const ph=['Data pagamento','Paciente','Observação','Valor'];
+  const sf=sh.map((h,i)=>`<th>${h}<input class="filterinput" placeholder="filtrar..." oninput="launchFilter('sf',${i},this.value)"></th>`).join('');
+  const pf=ph.map((h,i)=>`<th>${h}<input class="filterinput" placeholder="filtrar..." oninput="launchFilter('pf',${i},this.value)"></th>`).join('');
+  $('launchesContent').innerHTML=`<div class="launch-panel"><div class="launch-total"><span>Total filtrado em Valor</span><strong id="launchSessionTotal">R$ 0,00</strong></div><h2>Sessões realizadas / cobranças</h2><table class="launch-table"><thead><tr>${sf}</tr></thead><tbody id="launchSessionsBody">${s.map(launchSessionRow).join('')||'<tr><td colspan="6" class="launch-empty">Nenhum lançamento de sessão.</td></tr>'}</tbody></table></div><div class="launch-panel"><div class="launch-total"><span>Total filtrado em Valor</span><strong id="launchPaymentTotal">R$ 0,00</strong></div><h2>Pagamentos recebidos</h2><table class="launch-table"><thead><tr>${pf}</tr></thead><tbody id="launchPaymentsBody">${p.map(launchPaymentRow).join('')||'<tr><td colspan="4" class="launch-empty">Nenhum pagamento.</td></tr>'}</tbody></table></div>`;
+  filterLaunchRows();
+}
+const BILLABLE_STATUSES=['Realizada','Faltou','Desmarcou'];
+function isBillableSession(x){return ['Realizada','Faltou'].includes(x.status)||(x.status==='Desmarcou'&&Number(x.billable_override||0)===1)}
+async function saveLaunchSession(id,el,field){
+  const tr=el.closest('tr');if(!tr)return;tr.classList.add('saving');
+  const current=launchState.sessions.find(x=>Number(x.id)===Number(id));if(!current){tr.classList.remove('saving');return}
+  const b={patient_id:current.patient_id,data:current.session_date,horario:current.session_time||null,valor:current.value,status:current.status,observacao:current.notes||''};
+  if(field==='date'){const v=dmyToIso(el.value);if(!v){tr.classList.remove('saving');return toast('Data inválida. Use DD/MM/AAAA.')}b.data=v}
+  if(field==='time')b.horario=el.value||null;
+  if(field==='patient')b.patient_id=Number(el.value);
+  if(field==='status'){b.status=el.value;if(b.status==='Desmarcou')b.cobrar=false;}
+  if(field==='value')b.valor=el.value;
+  if(field==='note')b.observacao=el.value;
+  const r=await fetch('/api/financeiro/sessoes/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();tr.classList.remove('saving');if(!r.ok)return toast(j.error||'Não foi possível salvar.');toast('Lançamento atualizado.');loadLaunches();loadFinance();loadPatients();
+}
+async function saveLaunchPayment(id,el,field){
+  const current=launchState.payments.find(x=>Number(x.id)===Number(id));if(!current)return;
+  const b={patient_id:current.patient_id,data:current.payment_date,valor:current.amount,observacao:current.notes||''};
+  if(field==='date'){const v=dmyToIso(el.value);if(!v)return toast('Data inválida. Use DD/MM/AAAA.');b.data=v}
+  if(field==='patient')b.patient_id=Number(el.value);
+  if(field==='value')b.valor=el.value;
+  if(field==='note')b.observacao=el.value;
+  const tr=el.closest('tr');tr.classList.add('saving');const r=await fetch('/api/pagamentos/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();tr.classList.remove('saving');if(!r.ok)return toast(j.error||'Não foi possível salvar.');toast('Pagamento atualizado.');loadLaunches();loadFinance();loadPatients();
+}
+async function loadFinanceAnnual(){
+  initFinanceYears();const y=Number($('financeYear').value||new Date().getFullYear());
+  const d=await fetch('/api/resumo-ano?ano='+y).then(r=>r.json());
+  const rows=d.meses.map((x,i)=>`<tr><td>${MONTHS[i]}</td><td>${x.atendimento_qtd} · ${money(x.atendimento_valor)}</td><td>${money(x.recebimento)}</td><td>${x.cancel_hora_qtd} · ${money(x.cancel_hora_valor)}</td><td>${x.faltas_qtd} · ${money(x.faltas_valor)}</td><td>${x.reag_qtd} · ${money(x.reag_valor)}</td></tr>`).join('');
+  const maxA=Math.max(1,...d.meses.map(x=>x.atendimento_valor));
+  const maxR=Math.max(1,...d.meses.map(x=>x.recebimento));
+  const colsA=d.meses.map((x,i)=>`<button class="col-item chart-click" title="${MONTHS[i]}: ${money(x.atendimento_valor)}" onclick="openFinanceDetails('atendimento','${x.mes}')"><div class="col-value">${money(x.atendimento_valor)}</div><div class="col col-att" style="height:${Math.max(4,Math.round(x.atendimento_valor/maxA*150))}px"></div><span>${MONTHS[i].slice(0,3)}</span></button>`).join('');
+  const colsR=d.meses.map((x,i)=>`<button class="col-item chart-click" title="${MONTHS[i]}: ${money(x.recebimento)}" onclick="openFinanceDetails('recebimentos','${x.mes}')"><div class="col-value">${money(x.recebimento)}</div><div class="col col-rec" style="height:${Math.max(4,Math.round(x.recebimento/maxR*150))}px"></div><span>${MONTHS[i].slice(0,3)}</span></button>`).join('');
+  $('financeAnnual').innerHTML=`<div class="finance-charts"><div class="chart-card"><h3>Atendimento por mês</h3><div class="columns-chart">${colsA}</div></div><div class="chart-card"><h3>Recebimentos por mês</h3><div class="columns-chart">${colsR}</div></div></div><div class="chart-card" style="margin-bottom:10px"><h3>Resumo do ano</h3><div class="mini-stat"><span>Atendimentos</span><b>${d.totals.atendimento_qtd} · ${money(d.totals.atendimento_valor)}</b></div><div class="mini-stat"><span>Recebimentos</span><b>${money(d.totals.recebimento)}</b></div><div class="mini-stat"><span>Desmarcou (cobrável)</span><b>${d.totals.cancel_hora_qtd} · ${money(d.totals.cancel_hora_valor)}</b></div><div class="mini-stat"><span>Faltas</span><b>${d.totals.faltas_qtd} · ${money(d.totals.faltas_valor)}</b></div><div class="mini-stat"><span>Com reagendamento</span><b>${d.totals.reag_qtd} · ${money(d.totals.reag_valor)}</b></div></div></div><table class="finance-month-table"><thead><tr><th>Mês</th><th>Atendimento</th><th>Recebimentos</th><th>Desmarcou (cobrável)</th><th>Faltas</th><th>Com reagendamento</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td>Total ${y}</td><td>${d.totals.atendimento_qtd} · ${money(d.totals.atendimento_valor)}</td><td>${money(d.totals.recebimento)}</td><td>${d.totals.cancel_hora_qtd} · ${money(d.totals.cancel_hora_valor)}</td><td>${d.totals.faltas_qtd} · ${money(d.totals.faltas_valor)}</td><td>${d.totals.reag_qtd} · ${money(d.totals.reag_valor)}</td></tr></tfoot></table>`;
+}
+async function openFinanceDetails(tipo,mes){
+  const d=await fetch('/api/financeiro/detalhes?tipo='+encodeURIComponent(tipo)+'&mes='+mes).then(r=>r.json());
+  const title={atendimento:'Atendimento',devido:'À Receber — sessões ainda não recebidas',recebimentos:'Recebimentos',atrasados:'Atrasados — mais de 30 dias',realizadas:'Sessões realizadas',canceladas_hora:'Cancelamentos em cima da hora — sem reagendamento',faltas:'Faltas',reagendadas:'Cancelamentos com reagendamento'}[tipo]||'Detalhes';
+  const grouped=d.slice().sort((a,b)=>((a.data||'').localeCompare(b.data||''))||((a.paciente_name||'').localeCompare(b.paciente_name||'')));
+  const monthLabel=mes&&mes.length===7?`${MONTHS[Number(mes.slice(5))-1]} ${mes.slice(0,4)}`:mes;
+
+  let body=grouped.length?`<table><thead><tr><th>Paciente</th><th>Data</th><th>Hora</th><th>Status</th><th>Valor</th><th>Observação</th></tr></thead><tbody>${grouped.map(x=>`<tr><td>${esc(x.paciente_name)}</td><td>${dmy(x.data)}</td><td>${esc(x.horario||'')}</td><td>${esc(x.status||'Pagamento')}</td><td>${money(x.valor)}</td><td>${esc(x.observacao||'')}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">Nenhum registro para este período.</p>';
+  openModal(`${title} • ${monthLabel}`,body,`<button class="secondary" onclick="closeModal()">Fechar</button>`);
+}
+async function editFinanceSession(id){
+  const rows=await fetch('/api/sessoes').then(r=>r.json()); const x=rows.find(r=>Number(r.id)===Number(id));
+  if(!x)return toast('Lançamento de sessão não encontrado.');
+  const patients=await fetch('/api/pacientes?status=todos').then(r=>r.json());
+  openModal('Editar lançamento de sessão',`<div class="formgrid"><label class="full">Paciente<select id="editSessPatient">${patients.map(p=>`<option value="${p.id}" ${Number(p.id)===Number(x.patient_id)?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label><label>Data<input id="editSessDate" type="date" value="${x.session_date||''}"></label><label>Horário<input id="editSessTime" type="time" value="${x.session_time||''}"></label><label>Valor da cobrança<input id="editSessValue" type="number" step="0.01" value="${Number(x.value||0).toFixed(2)}"></label><label>Status<select id="editSessStatus">${(x.status==='Agendada'?[`<option value="Agendada" selected disabled>Agendada</option>`]:[]).concat(STATUS.filter(([v])=>v!=='Agendada').map(([v])=>`<option value="${v}" ${x.status===v?'selected':''}>${v}</option>`)).join('')}</select></label><label class="full">Observação<textarea id="editSessNote" rows="2">${esc(x.notes||'')}</textarea></label></div>`,`<button class="secondary" onclick="closeModal()">Cancelar</button><button class="primary" onclick="saveFinanceSession(${id})">Salvar alterações</button>`);
+}
+async function saveFinanceSession(id){
+  const b={patient_id:Number($('editSessPatient').value),data:$('editSessDate').value,horario:$('editSessTime').value||null,valor:$('editSessValue').value,status:$('editSessStatus').value,observacao:$('editSessNote').value};if(b.status==='Desmarcou')b.cobrar=false;
+  const r=await fetch('/api/financeiro/sessoes/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();
+  if(!r.ok)return toast(j.error||'Não foi possível alterar o lançamento.');
+  closeModal();$('mesFin').value=b.data.slice(0,7);toast('Lançamento de sessão alterado.');loadFinance();loadPatients();
+}
+async function editPayment(id){
+  const rows=await fetch('/api/pagamentos').then(r=>r.json()); const x=rows.find(r=>Number(r.id)===Number(id)); if(!x)return toast('Pagamento não encontrado.');
+  const patients=await fetch('/api/pacientes?status=todos').then(r=>r.json());
+  openModal('Editar pagamento',`<div class="formgrid"><label class="full">Paciente<select id="editPayPatient">${patients.map(p=>`<option value="${p.id}" ${Number(p.id)===Number(x.patient_id)?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label><label>Valor<input id="editPayValue" type="number" step="0.01" value="${Number(x.amount||0).toFixed(2)}"></label><label>Data<input id="editPayDate" type="date" value="${x.payment_date||''}"></label><label class="full">Observação<textarea id="editPayNote" rows="2">${esc(x.notes||'')}</textarea></label></div>`,`<button class="danger secondary" onclick="deletePayment(${id})">Excluir</button><button class="secondary" onclick="closeModal()">Cancelar</button><button class="primary" onclick="savePaymentEdit(${id})">Salvar alterações</button>`);
+}
+async function savePaymentEdit(id){const b={patient_id:Number($('editPayPatient').value),valor:$('editPayValue').value,data:$('editPayDate').value,observacao:$('editPayNote').value};const r=await fetch('/api/pagamentos/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)return toast(j.error||'Erro');closeModal();toast('Pagamento alterado.');loadFinance();loadPatients()}
+async function deletePayment(id){if(!confirm('Excluir este pagamento?'))return;const r=await fetch('/api/pagamentos/'+id,{method:'DELETE'});if(!r.ok)return toast('Não foi possível excluir.');closeModal();toast('Pagamento excluído.');loadFinance();loadPatients()}
+async function openPaymentModal(){const patients=await fetch('/api/pacientes?status=todos').then(r=>r.json());openModal('Registrar pagamento',`<div class="formgrid"><label class="full">Paciente<select id="payPatient">${patients.filter(p=>p.active).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label><label>Valor<input id="payValue" type="number" min="0" step="0.01"></label><label>Data<input id="payDate" type="date" value="${iso(new Date())}"></label><label class="full">Observação<textarea id="payNote" rows="2"></textarea></label></div>`,`<button class="secondary" onclick="closeModal()">Cancelar</button><button class="primary" onclick="savePayment()">Salvar pagamento</button>`)}
+async function savePayment(){const b={patient_id:Number($('payPatient').value),valor:$('payValue').value,data:$('payDate').value,observacao:$('payNote').value};const r=await fetch('/api/pagamentos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)return toast(j.error||'Erro');closeModal();$('mesFin').value=b.data.slice(0,7);toast('Pagamento registrado.');loadFinance();loadPatients()}
+
+// Agenda settings
+function openAgendaSettings(){
+  const a=agendaSettings(), dayNames=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const dayChecks=dayNames.map((name,i)=>`<label><input type="checkbox" id="day${i}" ${!a.hiddenDays.includes(i)?'checked':''}> ${name}</label>`).join('');
+  const timeChecks=TIMES.map(t=>`<label><input type="checkbox" id="time${t.slice(0,2)}" ${!a.hiddenTimes.includes(t)?'checked':''}> ${t}</label>`).join('');
+  const widths=dayNames.map((name,i)=>`<label>${name}<input id="width${i}" type="range" min="80" max="260" value="${a.dayWidths[i]}" oninput="widthVal${i}.textContent=this.value+'px'"><span id="widthVal${i}">${a.dayWidths[i]}px</span></label>`).join('');
+  openModal('Ajustar agenda',`<div class="settings-grid"><div><b>Colunas — dias visíveis</b><div class="checklist" style="margin-top:8px">${dayChecks}</div></div><div><b>Linhas — horários visíveis</b><div class="checklist" style="margin-top:8px">${timeChecks}</div></div><div class="full"><b>Largura individual das colunas</b><div class="width-grid" style="margin-top:8px">${widths}</div></div><div><label>Altura das linhas <input id="rowHeight" type="range" min="50" max="100" value="${a.rowHeight}" oninput="rowHeightVal.textContent=this.value+'px'"><span id="rowHeightVal">${a.rowHeight}px</span></label></div></div>`,`<button class="secondary" onclick="resetAgendaSettings()">Restaurar padrão</button><button class="secondary" onclick="closeModal()">Cancelar</button><button class="primary" onclick="saveAgendaSettings()">Salvar</button>`);
+}
+function saveAgendaSettings(){
+  const hiddenDays=[0,1,2,3,4,5,6].filter(i=>!$('day'+i).checked);
+  const hiddenTimes=TIMES.filter(t=>!$('time'+t.slice(0,2)).checked);
+  const dayWidths={};for(let i=0;i<7;i++)dayWidths[i]=Number($('width'+i).value);
+  const a={version:2,hiddenDays,hiddenTimes,rowHeight:Number($('rowHeight').value),dayWidths,timeCol:55};
+  localStorage.setItem('agendaSettings',JSON.stringify(a));closeModal();renderCalendar();toast('Preferências da agenda salvas.');
+}
+function resetAgendaSettings(){localStorage.removeItem('agendaSettings');closeModal();applyAgendaCss();renderCalendar();toast('Preferências restauradas.')}
+
+// Patients
+function weekdayName(n){return n==null?'—':DAYS[Number(n)]||'—'}
+function loadPatientHistoryFrom(){const v=localStorage.getItem('patientHistoryFrom')||'';if($('patientHistoryFrom'))$('patientHistoryFrom').value=v;return v}
+function savePatientHistoryFrom(){localStorage.setItem('patientHistoryFrom',$('patientHistoryFrom').value||'')}
+async function loadPatients(){loadPatientHistoryFrom();const q=[];const status=$('patientStatus').value;const data=await fetch('/api/pacientes?status='+status).then(r=>r.json());renderPatientTable(data)}
+function renderPatientTable(rows){patientFilters=['','','',''];$('patientTotal').textContent=money(rows.reduce((a,p)=>a+Math.max(0,Number(p.pending||0)),0));let head=`<table><thead><tr><th>Nome<input class="filterinput" placeholder="filtrar..." oninput="filterPatientCol(0,this.value)"></th><th>Valor sessão<input class="filterinput" placeholder="filtrar..." oninput="filterPatientCol(1,this.value)"></th><th>Dia/horário<input class="filterinput" placeholder="filtrar..." oninput="filterPatientCol(2,this.value)"></th><th>Valor pendente<input class="filterinput" placeholder="filtrar..." oninput="filterPatientCol(3,this.value)"></th><th>Status</th><th></th></tr></thead><tbody>`;head+=rows.map(p=>`<tr data-name="${esc(p.name).toLowerCase()}" data-fee="${Number(p.fee||0).toFixed(2)}" data-pref="${esc(weekdayName(p.weekday)+' '+(p.habitual_time||''))}" data-pending="${Number(p.pending||0).toFixed(2)}"><td><button class="patient-link" onclick="detail(${p.id})">${esc(p.name)}</button></td><td>${money(p.fee)}</td><td>${weekdayName(p.weekday)} ${p.habitual_time||''}</td><td>${money(Math.max(0,Number(p.pending||0)))}</td><td><span class="badge ${p.active?'on':'off'}">${p.active?'Ativo':'Inativo'}</span></td><td class="actions"><button class="primary" onclick="openPaymentControl(${p.id})">💬 Controle Pagamentos</button><button class="secondary" onclick="attachPatientFile(${p.id})">📎 Anexar</button><button class="secondary" onclick="togglePatient(${p.id},${p.active?0:1})">${p.active?'Desativar':'Ativar'}</button><button class="secondary" onclick="openPatientModal(${p.id})">Editar</button></td></tr>`).join('');head+='</tbody></table>';$('patientTable').innerHTML=head}
+let patientFilters=['','','','']; function filterPatientCol(col,val){patientFilters[col]=val.toLowerCase();document.querySelectorAll('#patientTable tbody tr').forEach(tr=>{const vals=[tr.dataset.name,tr.dataset.fee,tr.dataset.pref,tr.dataset.pending];tr.style.display=patientFilters.every((q,i)=>!q||vals[i].includes(q))?'':'none'})}
+function openPatientModal(id=null){if(id){fetch('/api/pacientes/'+id).then(r=>r.json()).then(d=>showPatientModal(d.paciente))}else showPatientModal(null)}
+function showPatientModal(p){const isEdit=!!p;openModal(isEdit?'Editar paciente':'Novo paciente',`<div class="formgrid"><label class="full">Nome<input id="pNome" value="${esc(p?.name||'')}"></label><label>Telefone / WhatsApp<input id="pTel" value="${esc(p?.whatsapp||'')}"></label><label>E-mail<input id="pEmail" type="email" value="${esc(p?.email||'')}"></label><label>Valor da sessão<input id="pFee" type="number" min="0" step="0.01" value="${p?.fee??''}"></label><label>Frequência<select id="pFrequency" onchange="document.getElementById('pStartWrap').classList.toggle('hidden',this.value!=='Quinzenal')"><option value="Semanal" ${(p?.frequency||'Semanal')==='Semanal'?'selected':''}>Semanal</option><option value="Quinzenal" ${p?.frequency==='Quinzenal'?'selected':''}>A cada 15 dias</option></select></label><label id="pStartWrap" class="${p?.frequency==='Quinzenal'?'':'hidden'}">Data de referência<input id="pStart" type="date" value="${esc(p?.frequency_start||'')}"></label><label>Dia preferencial<select id="pDay">${DAYS.map((d,i)=>`<option value="${i}" ${Number(p?.weekday)===i?'selected':''}>${d}</option>`).join('')}</select></label><label>Horário preferencial<input id="pTime" type="time" value="${esc(p?.habitual_time||'')}"></label><label class="full">Observações<textarea id="pNotes" rows="2">${esc(p?.notes||'')}</textarea></label></div>`,`<button class="secondary" onclick="closeModal()">Cancelar</button><button class="primary" onclick="savePatient(${p?.id||'null'})">${isEdit?'Salvar':'Cadastrar'}</button>`)}
+async function savePatient(id){const old=id?await fetch('/api/pacientes/'+id).then(r=>r.json()).then(d=>d.paciente):null;const b={nome:$('pNome').value,telefone:$('pTel').value,email:$('pEmail').value,observacoes:$('pNotes').value,valor_sessao:$('pFee').value,dia_preferencial:$('pDay').value,horario_preferencial:$('pTime').value,frequencia:$('pFrequency').value,data_inicio_frequencia:$('pStart').value||null};const changed=!!old&&(Number(old.weekday)!==Number(b.dia_preferencial)||String(old.habitual_time||'')!==String(b.horario_preferencial||'')||String(old.frequency||'Semanal')!==b.frequencia||String(old.frequency_start||'')!==String(b.data_inicio_frequencia||''));const url=id?'/api/pacientes/'+id:'/api/pacientes';const r=await fetch(url,{method:id?'PATCH':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)return toast(j.error||'Erro');closeModal();toast(id?'Paciente atualizado.':'Paciente cadastrado.');loadPatients();if(changed&&confirm('O dia, horário ou frequência mudou. Deseja preencher a agenda com o novo horário?')){const start=iso(new Date());const end=prompt('Preencher agenda até qual data? (AAAA-MM-DD)',iso(addDays(new Date(),112)));if(end){const pr=await fetch('/api/pacientes/'+id+'/popular',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({inicio:start,fim:end})});const pj=await pr.json();if(!pr.ok)toast(pj.error||'Erro ao preencher agenda');else toast(`Agenda preenchida: ${pj.created||0} sessões adicionadas; ${pj.skipped||0} conflitos ignorados.`);loadAgenda()}}}
+async function togglePatient(id,active){const r=await fetch('/api/pacientes/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({active:!!active})});const j=await r.json();if(!r.ok)return toast(j.error||'Erro');toast(active?'Paciente ativado.':'Paciente desativado.');loadPatients()}
+
+function monthKey(y,m){return y+'-'+String(m).padStart(2,'0')}
+function addMonth(key,n){let [y,m]=key.split('-').map(Number);m+=n;while(m>12){y++;m-=12}while(m<1){y--;m+=12}return monthKey(y,m)}
+function monthsBetween(from,to){const out=[];let k=from;while(k<=to){out.push(k);k=addMonth(k,1)}return out}
+async function openPaymentControl(id){
+  const d=await fetch('/api/pacientes/'+id).then(r=>r.json()), p=d.paciente;
+  const from=loadPatientHistoryFrom()||d.sessoes.filter(x=>x.session_date<=iso(new Date())).map(x=>x.session_date).sort()[0]||iso(new Date());
+  const today=iso(new Date()), start=from>today?today:from, end=today;
+  const sessions=d.sessoes.filter(x=>x.session_date<=end).sort((a,b)=>(a.session_date+a.session_time).localeCompare(b.session_date+b.session_time));
+  const payments=d.pagamentos.filter(x=>x.payment_date<=end).sort((a,b)=>a.payment_date.localeCompare(b.payment_date)||a.id-b.id);
+  const first=start.slice(0,7), last=end.slice(0,7), months=monthsBetween(first,last);
+  const openingDue=sessions.filter(x=>x.session_date<start&&isBillableSession(x)).reduce((a,x)=>a+Number(x.value||0),0);
+  const openingPaid=payments.filter(x=>x.payment_date<start).reduce((a,x)=>a+Number(x.amount||0),0);
+  let saldoAcumulado=Math.round((openingDue-openingPaid)*100)/100;
+  const data=[];
+  for(const m of months){
+    const ss=sessions.filter(x=>x.session_date.slice(0,7)===m && x.session_date>=start);
+    const pp=payments.filter(x=>x.payment_date.slice(0,7)===m && x.payment_date>=start);
+    const due=ss.filter(isBillableSession).reduce((a,x)=>a+Number(x.value||0),0);
+    const paid=pp.reduce((a,x)=>a+Number(x.amount||0),0);
+    saldoAcumulado=Math.round((saldoAcumulado+due-paid)*100)/100;
+    if(ss.length||pp.length||m===first)data.push({mes:m,sessoes:ss,pagamentos:pp});
+  }
+  paymentTextState={p,data,saldoFinal:saldoAcumulado,from:start};
+  const text=buildPaymentText();
+  openModal(`Controle de pagamentos • ${p.name}`,`<p class="muted">Extrato mensal desde <b>${dmy(start)}</b>. O texto abaixo pode ser personalizado antes do envio.</p><label style="display:block;font-size:11px;color:#555;margin-bottom:8px">Mensagem personalizada (opcional)<textarea id="waCustom" rows=3 style="width:100%" placeholder="Digite uma mensagem antes do extrato..."></textarea></label><label style="display:block;font-size:11px;color:#555">Texto para WhatsApp<textarea id="waText" rows=18 style="width:100%;font-family:Segoe UI,Arial,sans-serif;white-space:pre-wrap"></textarea></label>`,`<div class="wa-actions"><button class="secondary" onclick="closeModal()">Cancelar</button><button class="secondary" onclick="copyPaymentText()">📋 Copiar texto</button><button class="primary" onclick="copyPaymentTextAndOpenWhatsApp()">💬 Copiar e abrir WhatsApp</button></div>`);
+  $('waText').value=text;
+  $('waCustom').addEventListener('input',()=>{$('waText').value=buildPaymentText($('waCustom').value)});
+}
+function dmySlash(v){if(!v)return '—';const p=String(v).slice(0,10).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:String(v)}
+function buildPaymentText(custom=''){
+  const st=paymentTextState;if(!st)return '';
+  let lines=[];if(custom.trim())lines.push(custom.trim(),'');
+  for(const x of st.data){
+    const month=MONTHS[Number(x.mes.slice(5))-1][0].toUpperCase()+MONTHS[Number(x.mes.slice(5))-1].slice(1);
+    lines.push(`*${month} ${x.mes.slice(0,4)}*`);
+    if(x.sessoes.length){
+      for(const ss of x.sessoes){lines.push(`${dmySlash(ss.session_date)} – ${money(ss.value)}`);}
+    }
+    lines.push('*Pagamentos*');
+    if(x.pagamentos.length){for(const pg of x.pagamentos)lines.push(`${dmySlash(pg.payment_date)} – ${money(pg.amount)}`);}else lines.push('Nenhum pagamento');
+    if(x!==st.data[st.data.length-1]) lines.push('');
+  }
+  lines.push('');
+  lines.push(`*Saldo à pagar: ${money(st.saldoFinal)}*`);
+  return lines.join('\n').trim();
+}
+async function copyPaymentText(){const t=$('waText')?.value||buildPaymentText();if(!t)return;try{await navigator.clipboard.writeText(t);toast('Texto copiado.')}catch{const ta=$('waText');ta.focus();ta.select();document.execCommand('copy');toast('Texto copiado.')}}
+async function copyPaymentTextAndOpenWhatsApp(){const st=paymentTextState;if(!st||!st.p.whatsapp)return toast('Paciente não possui WhatsApp cadastrado.');const t=$('waText')?.value||buildPaymentText();try{await navigator.clipboard.writeText(t)}catch{const ta=$('waText');ta.focus();ta.select();document.execCommand('copy')}const phone=String(st.p.whatsapp).replace(/\D/g,'');window.location.href='whatsapp://send?phone=55'+phone;toast('Texto copiado. Cole no WhatsApp com Ctrl+V.');}
+let paymentTextState=null;
+function statusLabel(s){if(s==='Realizada')return 'Sessão realizada';if(s==='Faltou')return 'Falta';if(s==='Desmarcou')return 'Desmarcou';return s}
+function renderPaymentImage(){
+  const st=paymentImageState;if(!st)return;
+  let html='';
+  for(const x of st.data){
+    html+=`<div class="extract-month"><div class="extract-month-title">${MONTHS[Number(x.mes.slice(5))-1]} ${x.mes.slice(0,4)}</div><div class="extract-section-title">Sessões</div>${x.sessoes.map(s=>`<div class="pe-row"><span>${dmy(s.session_date)} – ${esc(statusLabel(s.status))}</span><b>${isBillableSession(s)?money(s.value):''}</b></div>`).join('')||'<div class="muted">Nenhuma sessão.</div>'}<div class="extract-section-title">Pagamentos</div>${x.pagamentos.map(pg=>`<div class="pe-row"><span>${dmy(pg.payment_date)}</span><b>${money(pg.amount)}</b></div>`).join('')||'<div class="muted">Nenhum pagamento.</div>'}</div>`;
+  }
+  html+=`<div class="final-balance"><strong>${money(st.saldoFinal)}</strong></div>`;
+  $('paymentImagePreview').innerHTML=`<div class="payment-extract" id="paymentExtract"><div class="ph"><b>Extrato financeiro</b><small>${esc(st.p.name)} • desde ${dmy(st.from)}</small></div><div class="pe-body">${html}</div><div class="pe-foot">Controle financeiro • Nathalia</div></div>`;
+}
+async function makePaymentImageBlob(){
+  const st=paymentImageState;if(!st)return null;
+  const W=900,S=3; let rows=0;for(const x of st.data)rows+=3+x.sessoes.length+x.pagamentos.length;
+  const H=Math.max(1000,240+rows*42+st.data.length*22);const c=document.createElement('canvas');c.width=W*S;c.height=H*S;const ctx=c.getContext('2d');ctx.scale(S,S);
+  ctx.fillStyle='#f5f6fa';ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';roundRect(ctx,30,25,W-60,H-50,20);ctx.fill();ctx.fillStyle='#f6f3ff';roundRect(ctx,30,25,W-60,125,20);ctx.fill();
+  ctx.fillStyle='#24212f';ctx.font='700 30px Arial';ctx.fillText('Extrato financeiro',60,72);ctx.fillStyle='#5f6470';ctx.font='400 19px Arial';ctx.fillText(st.p.name,60,103);ctx.font='400 16px Arial';ctx.fillText(`Desde ${dmy(st.from)}`,60,128);
+  let y=185;
+  for(const x of st.data){
+    ctx.fillStyle='#24212f';ctx.font='700 20px Arial';ctx.fillText(`${MONTHS[Number(x.mes.slice(5))-1]} ${x.mes.slice(0,4)}`,60,y);y+=31;
+    ctx.fillStyle='#6b7280';ctx.font='700 13px Arial';ctx.fillText('SESSÕES',60,y);y+=22;
+    for(const ss of x.sessoes){ctx.fillStyle='#343943';ctx.font='400 15px Arial';ctx.fillText(`${dmy(ss.session_date)} – ${statusLabel(ss.status)}`,72,y);if(isBillableSession(ss)){ctx.textAlign='right';ctx.fillText(money(ss.value),790,y);ctx.textAlign='left'}y+=24}
+    ctx.fillStyle='#6b7280';ctx.font='700 13px Arial';ctx.fillText('PAGAMENTOS',60,y+4);y+=27;
+    for(const pg of x.pagamentos){ctx.fillStyle='#343943';ctx.font='400 15px Arial';ctx.fillText(dmy(pg.payment_date),72,y);ctx.textAlign='right';ctx.fillText(money(pg.amount),790,y);ctx.textAlign='left';y+=24}
+    y+=18;
+  }
+  ctx.fillStyle='#eaf2ff';roundRect(ctx,60,y,730,58,12);ctx.fill();ctx.fillStyle='#1769d1';ctx.font='700 27px Arial';ctx.textAlign='right';ctx.fillText(money(st.saldoFinal),760,y+38);ctx.textAlign='left';ctx.fillStyle='#7b8190';ctx.font='400 12px Arial';ctx.fillText('Controle financeiro • Nathalia',60,H-50);
+  return new Promise(resolve=>c.toBlob(resolve,'image/png'));
+}
+async function downloadPaymentImage(){const blob=await makePaymentImageBlob();if(!blob)return;const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`extrato-${paymentImageState.p.name.replace(/[^a-z0-9]+/gi,'-').toLowerCase()}.png`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Imagem salva.')}
+async function copyPaymentImageAndOpenWhatsApp(){const st=paymentImageState;if(!st||!st.p.whatsapp)return toast('Paciente não possui WhatsApp cadastrado.');const blob=await makePaymentImageBlob();if(!blob)return;try{await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);toast('Imagem copiada. Abrindo WhatsApp...')}catch(e){await downloadPaymentImage();toast('O navegador não permitiu copiar a imagem. Ela foi salva; anexe no WhatsApp.')}const phone=String(st.p.whatsapp).replace(/\D/g,'');window.location.href='whatsapp://send?phone=55'+phone}
+function downloadPatientReport(){
+  const from=loadPatientHistoryFrom()||'';
+  const url='/api/relatorio-pacientes'+(from?'?from='+encodeURIComponent(from):'');
+  const a=document.createElement('a');a.href=url;a.download='relatorio-pacientes.xls';document.body.appendChild(a);a.click();a.remove();toast('Relatório Excel gerado.');
+}
+async function attachPatientFile(patientId){
+  const input=document.createElement('input');input.type='file';input.multiple=true;
+  input.onchange=async()=>{
+    const files=[...input.files];
+    for(const file of files){
+      if(file.size>20*1024*1024){toast(`Arquivo ${file.name} maior que 20 MB.`);continue;}
+      const data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)});
+      const res=await fetch('/api/pacientes/'+patientId+'/anexos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:file.name,mime_type:file.type||'application/octet-stream',data})});
+      const j=await res.json();if(!res.ok){toast(j.error||'Não foi possível anexar o arquivo.');return;}
+    }
+    toast('Arquivo(s) anexado(s) ao paciente.');detail(patientId);
+  };input.click();
+}
+async function deletePatientAttachment(id,patientId){
+  if(!confirm('Excluir este arquivo do paciente?'))return;
+  const r=await fetch('/api/anexos/'+id,{method:'DELETE'});const j=await r.json();if(!r.ok)return toast(j.error||'Não foi possível excluir.');toast('Arquivo excluído.');detail(patientId);
+}
+function formatBytes(n){n=Number(n||0);if(n<1024)return n+' B';if(n<1024*1024)return (n/1024).toFixed(1)+' KB';return (n/1024/1024).toFixed(1)+' MB'}
+
+async function detail(id,fromDate=''){let d=await fetch('/api/pacientes/'+id).then(r=>r.json());let p=d.paciente;let s=d.sessoes;let pay=d.pagamentos;let attachments=d.anexos||[];
+  const render=()=>{
+    const from=fromDate||$('patientHistoryFrom')?.value||'';
+    const todayIso=new Date().toISOString().slice(0,10);
+    const filteredS=s.filter(x=>x.session_date<=todayIso && (!from||x.session_date>=from));
+    const filteredP=pay.filter(x=>!from||x.payment_date>=from);
+    let due=filteredS.filter(x=>isBillableSession(x)).reduce((a,x)=>a+Number(x.value||0),0);
+    let paid=filteredP.reduce((a,x)=>a+Number(x.amount||0),0);
+    // O filtro altera os totais exibidos, mas o saldo a pagar é sempre o saldo global
+    // do paciente (sessões passadas cobráveis menos todos os pagamentos registrados).
+    const sessoesPassadas=s.filter(x=>x.session_date<=todayIso);
+    const devidoGlobal=sessoesPassadas.filter(isBillableSession).reduce((a,x)=>a+Number(x.value||0),0);
+    const recebidoGlobal=pay.reduce((a,x)=>a+Number(x.amount||0),0);
+    const saldoGlobal=Math.max(0,Math.round((devidoGlobal-recebidoGlobal)*100)/100);
+    // Aloca os pagamentos pelo mesmo critério FIFO do financeiro: os pagamentos do paciente
+    // quitam primeiro as sessões faturáveis mais antigas. Só pinta de verde quando a sessão
+    // está integralmente coberta; pagamentos parciais não recebem destaque.
+    let creditoDisponivel=Math.max(0,pay.reduce((total,x)=>total+Number(x.amount||0),0));
+    const sessoesParaLiquidar=s.slice().filter(isBillableSession).sort((a,b)=>(a.session_date+(a.session_time||'')+'-'+String(a.id)).localeCompare(b.session_date+(b.session_time||'')+'-'+String(b.id)));
+    const sessoesPagas=new Set();
+    for(const sessao of sessoesParaLiquidar){
+      const valor=Math.max(0,Number(sessao.value||0));
+      if(creditoDisponivel+0.005>=valor){sessoesPagas.add(Number(sessao.id));creditoDisponivel=Math.max(0,Math.round((creditoDisponivel-valor)*100)/100)}
+      else creditoDisponivel=0;
+    }
+    let sessionRows=filteredS.slice().sort((a,b)=>(a.session_date+a.session_time).localeCompare(b.session_date+b.session_time)).map(x=>`<tr data-session-row="${x.id}" class="${sessoesPagas.has(Number(x.id))?'session-paid':''}"><td><input class="launch-input launch-date" value="${esc(dmy(x.session_date))}" onchange="savePatientSessionInline(${x.id},this,'date')"></td><td><input class="launch-input launch-time" value="${esc(x.session_time||'')}" onchange="savePatientSessionInline(${x.id},this,'time')"></td><td><select class="launch-select launch-status" onchange="savePatientSessionInline(${x.id},this,'status')">${STATUS.map(([v])=>`<option value="${esc(v)}" ${x.status===v?'selected':''}>${esc(v)}</option>`).join('')}</select></td><td><input class="launch-input launch-value" type="number" step="0.01" value="${Number(x.value||0).toFixed(2)}" onchange="savePatientSessionInline(${x.id},this,'value')"></td><td><textarea class="launch-input note" rows="1" onchange="savePatientSessionInline(${x.id},this,'note')">${esc(x.notes||'')}</textarea></td></tr>`).join('');
+    let payRows=filteredP.slice().sort((a,b)=>a.payment_date.localeCompare(b.payment_date)).map(x=>`<tr data-payment-row="${x.id}"><td><input class="launch-input launch-date" value="${esc(dmy(x.payment_date))}" onchange="savePatientPaymentInline(${x.id},this,'date')"></td><td><input class="launch-input launch-value" type="number" step="0.01" value="${Number(x.amount||0).toFixed(2)}" onchange="savePatientPaymentInline(${x.id},this,'value')"></td><td><textarea class="launch-input note" rows="1" onchange="savePatientPaymentInline(${x.id},this,'note')">${esc(x.notes||'')}</textarea></td></tr>`).join('');
+    let phone=(p.whatsapp||'').replace(/\D/g,'');
+    let text=`Olá, ${p.name}!\n\nExtrato de sessões\n${filteredS.slice(-30).map(x=>`${dmy(x.session_date)}  ${x.status}  ${money(x.value)}`).join('\n')}\n\nTotal devido: ${money(due)}\nTotal pago: ${money(paid)}\nSaldo: ${money(saldoGlobal)}`;
+    const attachmentHtml=`<div class="patient-attachments"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="font-size:13px;margin:0">Arquivos anexados</h3><button class="secondary" onclick="attachPatientFile(${p.id})">📎 Anexar arquivo</button></div><div class="patient-attachments-list" style="margin-top:7px">${attachments.length?attachments.map(a=>`<div class="patient-attachment-row"><span><a href="/api/anexos/${a.id}" target="_blank">📄 ${esc(a.filename)}</a> <span class="meta">(${formatBytes(a.size)})</span></span><button class="secondary" onclick="deletePatientAttachment(${a.id},${p.id})">Excluir</button></div>`).join(''):'<span class="muted">Nenhum arquivo anexado.</span>'}</div></div>`;
+    const body=`<div class="history-modal"><p><b>WhatsApp:</b> ${esc(p.whatsapp||'-')} · <b>Sessão:</b> ${money(p.fee)} · <b>Preferência:</b> ${weekdayName(p.weekday)} ${esc(p.habitual_time||'')}</p><p><b>Devido:</b> ${money(due)} · <b>Recebido:</b> ${money(paid)} · <b>Saldo:</b> ${money(saldoGlobal)}</p><h3 style="font-size:13px">Sessões e observações</h3><div class="launch-panel" style="max-height:300px;margin-top:0"><table class="launch-table"><thead><tr><th>Data</th><th>Hora</th><th>Status</th><th>Valor</th><th>Observação</th></tr></thead><tbody>${sessionRows||'<tr><td colspan="5">Nenhuma sessão.</td></tr>'}</tbody></table></div><h3 style="font-size:13px;margin-top:15px">Pagamentos</h3><div class="launch-panel" style="max-height:220px;margin-top:0"><table class="launch-table"><thead><tr><th>Data</th><th>Valor</th><th>Observação</th></tr></thead><tbody>${payRows||'<tr><td colspan="3">Nenhum pagamento.</td></tr>'}</tbody></table></div>${attachmentHtml}</div>`;
+    openModal(`Histórico • ${p.name}`,body,`<button class="secondary" onclick="closeModal()">Fechar</button>${phone?`<button class="primary" onclick="window.open('https://wa.me/55${phone}?text='+encodeURIComponent(${JSON.stringify(text)}),'_blank')">💬 Abrir WhatsApp</button>`:''}`);
+  };
+  render();
+}
+function parseInlineDate(v){const s=String(v||'').trim();if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)){const [d,m,y]=s.split('/');return `${y}-${m}-${d}`}return dmyToIso(s)}
+async function savePatientSessionInline(id,el,field){
+  const rows=await fetch('/api/sessoes').then(r=>r.json());const x=rows.find(r=>Number(r.id)===Number(id));if(!x)return toast('Sessão não encontrada.');
+  const b={};if(field==='date'){const v=parseInlineDate(el.value);if(!v)return toast('Data inválida. Use DD/MM/AAAA.');b.data=v}else if(field==='time')b.horario=el.value||null;else if(field==='status'){b.status=el.value;if(b.status==='Desmarcou')b.cobrar=false;}else if(field==='value')b.valor=el.value;else if(field==='note')b.observacao=el.value;
+  const r=await fetch('/api/sessoes/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)return toast(j.error||'Não foi possível salvar.');toast('Lançamento atualizado.');loadPatients();detail(x.patient_id);
+}
+async function savePatientPaymentInline(id,el,field){
+  const rows=await fetch('/api/pagamentos').then(r=>r.json());const x=rows.find(r=>Number(r.id)===Number(id));if(!x)return toast('Pagamento não encontrado.');
+  const b={};if(field==='date'){const v=parseInlineDate(el.value);if(!v)return toast('Data inválida. Use DD/MM/AAAA.');b.data=v}else if(field==='value')b.valor=el.value;else if(field==='note')b.observacao=el.value;
+  const r=await fetch('/api/pagamentos/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)return toast(j.error||'Não foi possível salvar.');toast('Pagamento atualizado.');loadPatients();detail(x.patient_id);
+}
+
+$('mesFin').value=new Date().toISOString().slice(0,7);loadPatientHistoryFrom();initFinanceYears();loadAgenda();loadFinance();
+
+</script>
+</body>
+</html>
