@@ -82,7 +82,7 @@ nav{position:fixed;left:0;top:56px;width:170px;height:calc(100vh - 56px);overflo
 </main></div>
 <div id="modalRoot"></div><div id="toast" class="toast"></div>
 <script>
-fetch('/api/health').then(r=>r.json()).then(h=>{const e=document.getElementById('appVersion');if(e&&h.version)e.textContent='Controle administrativo • V'+h.version+(h.channel==='test'?' Teste':'')}).catch(()=>{});
+fetch('/api/health').then(r=>r.json()).then(h=>{const e=document.getElementById('appVersion');if(e&&h.version)e.textContent='Controle administrativo • V'+h.version}).catch(()=>{});
 const $=id=>document.getElementById(id); const money=v=>(Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const STATUS=[['Agendada','agendada'],['Realizada','realizada'],['Desmarcou','ca'],['Faltou','faltou']];
 const DAYS=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']; const MONTHS=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];

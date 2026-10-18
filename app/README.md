@@ -1,4 +1,4 @@
-# Consultório de Psicologia — V28.0.0 (teste)
+# Consultório de Psicologia — V28.0.0
 
 - Recorrência quinzenal calculada a cada 15 dias a partir da data de referência.
 - Sessões `Desmarcou` não entram no cálculo financeiro e não geram pergunta de cobrança.
