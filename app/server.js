@@ -97,6 +97,17 @@ const get = (sql, ...params) => db.prepare(sql).get(...params);
 async function body(req) { let data=''; for await (const chunk of req) data += chunk; return data ? JSON.parse(data) : {}; }
 const nowIso = () => new Date().toISOString();
 function isoDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+// Sessão do paciente cai nesta data? Semanal: todo dia da semana preferencial.
+// Quinzenal: a cada 14 dias (mesmo dia da semana), contando a partir da primeira
+// ocorrência do dia preferencial na data de referência.
+function patientDue(p,d){
+  if(new Date(d+'T12:00:00').getDay()!==Number(p.weekday)) return false;
+  if((p.frequency||'Semanal')!=='Quinzenal') return true;
+  const ref=p.frequency_start; if(!ref||d<ref) return false;
+  const base=new Date(ref+'T12:00:00'); base.setDate(base.getDate()+((Number(p.weekday)-base.getDay()+7)%7));
+  const days=Math.round((new Date(d+'T12:00:00')-base)/86400000);
+  return days>=0 && days%14===0;
+}
 const money = v => Number(v || 0);
 const xmlEsc = v => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 const excelCell = (value, type='String') => `<Cell><Data ss:Type="${type}">${xmlEsc(value)}</Data></Cell>`;
@@ -326,7 +337,7 @@ async function api(req,res,url) {
       const b=await body(req), inicio=b.inicio||new Date().toISOString().slice(0,10), fim=b.fim;
       if(!fim||inicio>fim) return json(res,400,{error:'Informe um período válido'});
       let created=0,skipped=0,dt=new Date(inicio+'T12:00:00'),last=new Date(fim+'T12:00:00');
-      while(dt<=last){const d=isoDate(dt);let due=false;if((p.frequency||'Semanal')==='Quinzenal'){const anchor=p.frequency_start;if(anchor&&d>=anchor){const days=Math.round((new Date(d+'T12:00:00')-new Date(anchor+'T12:00:00'))/86400000);due=days%15===0;}}else due=dt.getDay()===Number(p.weekday);if(due){if(isLocked(d,p.habitual_time)||sessionForDateTime(d,p.habitual_time)||get('SELECT 1 FROM personal_events WHERE event_date=? AND event_time=? LIMIT 1',d,p.habitual_time)){skipped++;}else{db.prepare('INSERT INTO sessions (patient_id,session_date,session_time,status,value,notes,slot_removed,created_at) VALUES (?,?,?,?,?,?,0,?)').run(p.id,d,p.habitual_time,'Agendada',p.fee,null,nowIso());created++;}}dt.setDate(dt.getDate()+1);}
+      while(dt<=last){const d=isoDate(dt);const due=patientDue(p,d);if(due){if(isLocked(d,p.habitual_time)||sessionForDateTime(d,p.habitual_time)||get('SELECT 1 FROM personal_events WHERE event_date=? AND event_time=? LIMIT 1',d,p.habitual_time)){skipped++;}else{db.prepare('INSERT INTO sessions (patient_id,session_date,session_time,status,value,notes,slot_removed,created_at) VALUES (?,?,?,?,?,?,0,?)').run(p.id,d,p.habitual_time,'Agendada',p.fee,null,nowIso());created++;}}dt.setDate(dt.getDate()+1);}
       return json(res,200,{created,skipped});
     }
 
@@ -340,7 +351,7 @@ async function api(req,res,url) {
       while(dt<=last){
         const d=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
         const dow=dt.getDay();
-        for(const p of patients.filter(x=>(x.frequency||'Semanal')==='Quinzenal' ? !!x.frequency_start && d>=x.frequency_start && Math.round((new Date(d+'T12:00:00')-new Date(x.frequency_start+'T12:00:00'))/86400000)%15===0 : Number(x.weekday)===dow)){
+        for(const p of patients.filter(x=>patientDue(x,d))){
           if(isLocked(d,p.habitual_time) || sessionForDateTime(d,p.habitual_time) || get('SELECT 1 FROM personal_events WHERE event_date=? AND event_time=? LIMIT 1',d,p.habitual_time)){ skipped++; continue; }
           db.prepare('INSERT INTO sessions (patient_id,session_date,session_time,status,value,notes,slot_removed,created_at) VALUES (?,?,?,?,?,?,0,?)').run(p.id,d,p.habitual_time,'Agendada',p.fee,null,nowIso());
           created++;
@@ -586,7 +597,7 @@ async function api(req,res,url) {
   } catch(e) { console.error(e); return json(res,500,{error:e.message}); }
 }
 
-const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json'};
+const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json','.ico':'image/x-icon','.png':'image/png','.svg':'image/svg+xml'};
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,`http://${req.headers.host||'localhost'}`);
   if(url.pathname.startsWith('/api/')) return api(req,res,url);

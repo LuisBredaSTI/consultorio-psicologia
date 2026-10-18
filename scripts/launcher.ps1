@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $InstallRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $AppDir = Join-Path $InstallRoot 'app'
 $DataDir = Join-Path $InstallRoot 'data'
@@ -51,9 +51,14 @@ function Update-App {
     # Atualização automática nunca deve impedir o programa de abrir.
   }
 }
+function Server-Running {
+  try { $c=New-Object System.Net.Sockets.TcpClient; $c.Connect('127.0.0.1',3000); $c.Close(); return $true } catch { return $false }
+}
 Ensure-Node
-Update-App
-$env:CONSULTORIO_DATA_DIR=$DataDir
-Start-Process -FilePath $NodeExe -ArgumentList @((Join-Path $AppDir 'server.js')) -WorkingDirectory $AppDir
-Start-Sleep -Seconds 2
+if(-not (Server-Running)){
+  Update-App
+  $env:CONSULTORIO_DATA_DIR=$DataDir
+  Start-Process -FilePath $NodeExe -ArgumentList @((Join-Path $AppDir 'server.js')) -WorkingDirectory $AppDir -WindowStyle Hidden
+  for($i=0;$i -lt 20 -and -not (Server-Running);$i++){ Start-Sleep -Milliseconds 500 }
+}
 Start-Process 'http://localhost:3000'
