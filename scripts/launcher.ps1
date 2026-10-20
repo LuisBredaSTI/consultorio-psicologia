@@ -46,6 +46,9 @@ function Update-App {
     $source=$tmp
     if(Test-Path (Join-Path $tmp 'app')){$source=Join-Path $tmp 'app'}
     Copy-Item (Join-Path $source '*') $AppDir -Recurse -Force
+    # O próprio launcher também é atualizado (vale a partir da próxima abertura)
+    $newLauncher=Join-Path $tmp 'scripts\launcher.ps1'
+    if(Test-Path $newLauncher){ Copy-Item $newLauncher (Join-Path $InstallRoot 'scripts\launcher.ps1') -Force }
     Remove-Item $tmp,$zip -Recurse -Force -ErrorAction SilentlyContinue
   } catch {
     # Atualização automática nunca deve impedir o programa de abrir.
@@ -54,9 +57,19 @@ function Update-App {
 function Server-Running {
   try { $c=New-Object System.Net.Sockets.TcpClient; $c.Connect('127.0.0.1',3000); $c.Close(); return $true } catch { return $false }
 }
+function Running-Version {
+  try { return (Invoke-RestMethod -Uri 'http://localhost:3000/api/health' -TimeoutSec 3).version } catch { return $null }
+}
+function Stop-Server {
+  Get-Process node -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($InstallRoot) } | Stop-Process -Force
+  Start-Sleep -Seconds 1
+}
 Ensure-Node
-if(-not (Server-Running)){
-  Update-App
+Update-App
+$running = Server-Running
+# Servidor já aberto, mas de uma versão diferente da instalada: reinicia sozinho
+if($running -and ((Running-Version) -ne (Read-Version))){ Stop-Server; $running = Server-Running }
+if(-not $running){
   $env:CONSULTORIO_DATA_DIR=$DataDir
   Start-Process -FilePath $NodeExe -ArgumentList @((Join-Path $AppDir 'server.js')) -WorkingDirectory $AppDir -WindowStyle Hidden
   for($i=0;$i -lt 20 -and -not (Server-Running);$i++){ Start-Sleep -Milliseconds 500 }

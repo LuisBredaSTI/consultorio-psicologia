@@ -1,4 +1,4 @@
-# Consultório de Psicologia — V28.1.1
+# Consultório de Psicologia — V28.1.2
 
 - Frequência quinzenal: a cada 14 dias, sempre no mesmo dia da semana do cadastro.
 - Pacientes editados direto no grid (nome, telefone, e-mail, valor, frequência, dia, horário, referência e observações).
