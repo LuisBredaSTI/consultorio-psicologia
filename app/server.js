@@ -11,6 +11,21 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 const db = new DatabaseSync(path.join(DATA_DIR, 'consultorio.db'));
 db.exec('PRAGMA foreign_keys = ON');
 
+// Tabelas base (instalação nova). Em bancos existentes nada muda; as colunas mais novas são
+// adicionadas por addColumn logo abaixo.
+db.exec(`CREATE TABLE IF NOT EXISTS patients (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, whatsapp TEXT, email TEXT, fee REAL NOT NULL DEFAULT 0, notes TEXT
+)`);
+db.exec(`CREATE TABLE IF NOT EXISTS sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, patient_id INTEGER NOT NULL, session_date TEXT NOT NULL, session_time TEXT,
+  status TEXT NOT NULL DEFAULT 'Agendada', value REAL NOT NULL DEFAULT 0, notes TEXT,
+  FOREIGN KEY(patient_id) REFERENCES patients(id) ON DELETE CASCADE
+)`);
+db.exec(`CREATE TABLE IF NOT EXISTS payments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, patient_id INTEGER NOT NULL, payment_date TEXT NOT NULL, amount REAL NOT NULL DEFAULT 0, notes TEXT,
+  FOREIGN KEY(patient_id) REFERENCES patients(id) ON DELETE CASCADE
+)`);
+
 function columnExists(table, column) {
   return db.prepare(`PRAGMA table_info(${table})`).all().some(c => c.name === column);
 }
