@@ -56,22 +56,6 @@ addColumn('personal_events', 'series_id', 'INTEGER');
 db.exec('UPDATE personal_events SET series_id=id WHERE series_id IS NULL');
 
 db.exec('CREATE INDEX IF NOT EXISTS idx_personal_events_date_time ON personal_events(event_date, event_time)');
-db.exec(`CREATE TABLE IF NOT EXISTS financial_entries (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  type TEXT NOT NULL CHECK(type IN ('receber','pagar')),
-  description TEXT NOT NULL,
-  amount REAL NOT NULL DEFAULT 0,
-  due_date TEXT,
-  paid_date TEXT,
-  status TEXT NOT NULL DEFAULT 'Aberto',
-  patient_id INTEGER,
-  notes TEXT,
-  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(patient_id) REFERENCES patients(id) ON DELETE SET NULL
-)`);
-db.exec('CREATE INDEX IF NOT EXISTS idx_financial_entries_type_date ON financial_entries(type,due_date)');
-
-
 db.exec(`CREATE TABLE IF NOT EXISTS patient_attachments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   patient_id INTEGER NOT NULL,
@@ -84,13 +68,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS patient_attachments (
 )`);
 db.exec('CREATE INDEX IF NOT EXISTS idx_patient_attachments_patient ON patient_attachments(patient_id, created_at)');
 
-db.exec(`CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`);
-function setting(key, fallback){ const r=get('SELECT value FROM app_settings WHERE key=?',key); return r ? r.value : fallback; }
-
 const STATUSES = ['Agendada','Realizada','Desmarcou','Faltou'];
-const BILLABLE = new Set(['Realizada','Faltou']);
-const BILLABLE_SQL = "s.status IN ('Realizada','Faltou')";
-function isBillable(s){return ['Realizada','Faltou'].includes(s.status)}
 const json = (res, status, data) => { const body = JSON.stringify(data); res.writeHead(status, {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}); res.end(body); };
 const all = (sql, ...params) => db.prepare(sql).all(...params);
 const get = (sql, ...params) => db.prepare(sql).get(...params);
@@ -108,6 +86,11 @@ function patientDue(p,d){
   const days=Math.round((new Date(d+'T12:00:00')-base)/86400000);
   return days>=0 && days%14===0;
 }
+const today = () => isoDate(new Date());
+const thisMonth = () => today().slice(0,7);
+function eachDay(from, to, fn){ for(const dt=new Date(from+'T12:00:00'), last=new Date(to+'T12:00:00'); dt<=last; dt.setDate(dt.getDate()+1)) fn(isoDate(dt)); }
+function groupBy(rows, key){ const m=new Map(); for(const r of rows){ if(!m.has(r[key])) m.set(r[key],[]); m.get(r[key]).push(r); } return m; }
+const collisionError = c => c.type==='lock' ? `Horário travado: ${c.lock.reason}` : `Horário já ocupado por ${c.session.patient_name}`;
 const money = v => Number(v || 0);
 const xmlEsc = v => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 const excelCell = (value, type='String') => `<Cell><Data ss:Type="${type}">${xmlEsc(value)}</Data></Cell>`;
@@ -144,18 +127,6 @@ function normalizeValue(b, patientId) {
   if (b.valor !== undefined && b.valor !== null && b.valor !== '') return money(b.valor);
   const p=get('SELECT fee FROM patients WHERE id=?', patientId); return money(p?.fee);
 }
-function patientFinancials() {
-  return all(`SELECT p.*,
-    COALESCE((SELECT SUM(CASE WHEN s.status IN ('Realizada','Faltou') THEN s.value ELSE 0 END)
-              FROM sessions s WHERE s.patient_id=p.id),0) AS total_due,
-    COALESCE((SELECT SUM(pg.amount) FROM payments pg WHERE pg.patient_id=p.id),0) AS total_paid,
-    COALESCE((SELECT SUM(CASE WHEN s.status IN ('Realizada','Faltou') THEN s.value ELSE 0 END)
-              FROM sessions s WHERE s.patient_id=p.id),0)
-      - COALESCE((SELECT SUM(pg.amount) FROM payments pg WHERE pg.patient_id=p.id),0) AS pending
-    FROM patients p ORDER BY p.name`);
-}
-
-
 function billableSessions() {
   return all(`SELECT s.*, p.name AS patient_name, p.whatsapp
               FROM sessions s JOIN patients p ON p.id=s.patient_id
@@ -165,11 +136,7 @@ function billableSessions() {
 function unpaidSessionRows() {
   const sessions=billableSessions();
   const payments=all(`SELECT patient_id, payment_date, amount, id FROM payments ORDER BY patient_id, payment_date, id`);
-  const byPatient=new Map();
-  for(const p of payments){
-    if(!byPatient.has(p.patient_id)) byPatient.set(p.patient_id,[]);
-    byPatient.get(p.patient_id).push({...p, remaining:Number(p.amount||0)});
-  }
+  const byPatient=groupBy(payments.map(p=>({...p, remaining:Number(p.amount||0)})),'patient_id');
   const out=[];
   for(const s of sessions){
     let remaining=Number(s.value||0);
@@ -182,6 +149,18 @@ function unpaidSessionRows() {
     if(remaining>0.005) out.push({...s, remaining:Math.round(remaining*100)/100});
   }
   return out;
+}
+
+// Cria as sessões 'Agendada' do paciente nos dias previstos pelo cadastro entre inicio e fim.
+function fillPatientAgenda(p, inicio, fim){
+  let created=0, skipped=0; const t=p.habitual_time;
+  eachDay(inicio, fim, d=>{
+    if(!patientDue(p,d)) return;
+    if(isLocked(d,t) || sessionForDateTime(d,t) || get('SELECT 1 FROM personal_events WHERE event_date=? AND event_time=? LIMIT 1',d,t)){ skipped++; return; }
+    db.prepare('INSERT INTO sessions (patient_id,session_date,session_time,status,value,notes,slot_removed,created_at) VALUES (?,?,?,?,?,?,0,?)').run(p.id,d,t,'Agendada',p.fee,null,nowIso());
+    created++;
+  });
+  return {created,skipped};
 }
 
 async function api(req,res,url) {
@@ -238,19 +217,14 @@ async function api(req,res,url) {
     // Patient report (Excel-compatible .xls with two worksheets)
     if(url.pathname==='/api/relatorio-pacientes' && req.method==='GET') {
       const from=(url.searchParams.get('from')||'').trim();
-      const params=[];
       const patientRows=all('SELECT id,name,whatsapp,fee,active FROM patients ORDER BY name COLLATE NOCASE');
       let sessionSql=`SELECT s.patient_id,s.session_date,s.session_time,p.name AS patient_name,s.status,s.notes,s.value FROM sessions s JOIN patients p ON p.id=s.patient_id`;
       let paymentSql=`SELECT pg.patient_id,pg.payment_date,p.name AS patient_name,pg.notes,pg.amount FROM payments pg JOIN patients p ON p.id=pg.patient_id`;
-      if(from){sessionSql+=' WHERE s.session_date>=?';paymentSql+=' WHERE pg.payment_date>=?';params.push(from)}
+      if(from){sessionSql+=' WHERE s.session_date>=?';paymentSql+=' WHERE pg.payment_date>=?'}
       sessionSql+=' ORDER BY p.name COLLATE NOCASE,s.session_date,s.session_time,s.id';
-      const sessionParams=from?[from]:[];
       paymentSql+=' ORDER BY p.name COLLATE NOCASE,pg.payment_date,pg.id';
-      const sessionRows=all(sessionSql,...sessionParams), paymentRows=all(paymentSql,...(from?[from]:[]));
-      const sessionsBy=new Map(), paymentsBy=new Map();
-      for(const r of sessionRows){if(!sessionsBy.has(r.patient_id))sessionsBy.set(r.patient_id,[]);sessionsBy.get(r.patient_id).push(r)}
-      for(const r of paymentRows){if(!paymentsBy.has(r.patient_id))paymentsBy.set(r.patient_id,[]);paymentsBy.get(r.patient_id).push(r)}
-      const sRows=[[['Nome'],['Data sessão'],['Horário'],['Status'],['Observação'],['Valor']]];
+      const fromParams=from?[from]:[];
+      const sessionsBy=groupBy(all(sessionSql,...fromParams),'patient_id'), paymentsBy=groupBy(all(paymentSql,...fromParams),'patient_id');
       const sOut=[['Nome','Data sessão','Horário','Status','Observação','Valor'].map(v=>({value:v}))];
       for(const p of patientRows){const rows=sessionsBy.get(p.id)||[]; for(const r of rows)sOut.push([{value:p.name},{value:r.session_date},{value:r.session_time||''},{value:r.status},{value:r.notes||''},{value:Number(r.value||0),type:'Number'}])}
       const payOut=[['Nome','Data pagamento','Observação','Valor'].map(v=>({value:v}))];
@@ -298,7 +272,7 @@ async function api(req,res,url) {
     if(url.pathname==='/api/sessoes' && req.method==='POST') {
       const b=await body(req); if(!b.patient_id||!b.data||!b.status) return json(res,400,{error:'patient_id, data e status são obrigatórios'});
       if(!STATUSES.includes(b.status)) return json(res,400,{error:'Status inválido'});
-      const collision=checkCollision(b.data,b.horario||null); if(collision) return json(res,409,{error:collision.type==='lock'?`Horário travado: ${collision.lock.reason}`:`Horário já ocupado por ${collision.session.patient_name}`});
+      const collision=checkCollision(b.data,b.horario||null); if(collision) return json(res,409,{error:collisionError(collision)});
       const value=normalizeValue(b,b.patient_id);
       const info=db.prepare('INSERT INTO sessions (patient_id,session_date,session_time,status,value,notes,slot_removed,created_at) VALUES (?,?,?,?,?,?,0,?)').run(b.patient_id,b.data,b.horario||null,b.status,value,b.observacao||null,nowIso());
       return json(res,201,sessionById(info.lastInsertRowid));
@@ -308,7 +282,7 @@ async function api(req,res,url) {
       const id=Number(rm[1]); const old=sessionById(id); if(!old) return json(res,404,{error:'Sessão não encontrada'});
       const b=await body(req); const newDate=b.data,newTime=b.horario;
       if(!newDate||!newTime) return json(res,400,{error:'Nova data e horário são obrigatórios'});
-      const collision=checkCollision(newDate,newTime); if(collision) return json(res,409,{error:collision.type==='lock'?`Horário travado: ${collision.lock.reason}`:`Horário já ocupado por ${collision.session.patient_name}`});
+      const collision=checkCollision(newDate,newTime); if(collision) return json(res,409,{error:collisionError(collision)});
       const info=db.prepare('INSERT INTO sessions (patient_id,session_date,session_time,status,value,notes,slot_removed,created_at,rescheduled_from_id) VALUES (?,?,?,?,?,?,0,?,?)').run(old.patient_id,newDate,newTime,'Agendada',old.value,old.notes||null,nowIso(),id);
       db.prepare('UPDATE sessions SET rescheduled_to_id=?, slot_removed=1 WHERE id=?').run(info.lastInsertRowid,id);
       return json(res,201,{original:sessionById(id),nova:sessionById(info.lastInsertRowid)});
@@ -322,7 +296,7 @@ async function api(req,res,url) {
       if(!STATUSES.includes(status)) return json(res,400,{error:'Status inválido'});
       if((date!==old.session_date || time!==old.session_time) && ['Realizada','Faltou'].includes(old.status)) return json(res,409,{error:'Sessões Realizada e Faltou não podem ser remanejadas.'});
       if(isLocked(date,time) && (date!==old.session_date || time!==old.session_time || b.status!==undefined)) return json(res,409,{error:'Este horário está travado'});
-      const collision=checkCollision(date,time,id); if(collision) return json(res,409,{error:collision.type==='lock'?`Horário travado: ${collision.lock.reason}`:`Horário já ocupado por ${collision.session.patient_name}`});
+      const collision=checkCollision(date,time,id); if(collision) return json(res,409,{error:collisionError(collision)});
       const value=b.valor!==undefined?money(b.valor):old.value;
       const slotRemoved=b.slot_removed!==undefined?Number(!!b.slot_removed):Number(old.slot_removed||0);
       const billableOverride=status==='Desmarcou'?0:null;
@@ -334,30 +308,19 @@ async function api(req,res,url) {
     let popPatient=url.pathname.match(/^\/api\/pacientes\/(\d+)\/popular$/);
     if(popPatient && req.method==='POST') {
       const p=get('SELECT * FROM patients WHERE id=?',popPatient[1]); if(!p) return json(res,404,{error:'Paciente não encontrado'});
-      const b=await body(req), inicio=b.inicio||new Date().toISOString().slice(0,10), fim=b.fim;
+      const b=await body(req), inicio=b.inicio||today(), fim=b.fim;
       if(!fim||inicio>fim) return json(res,400,{error:'Informe um período válido'});
-      let created=0,skipped=0,dt=new Date(inicio+'T12:00:00'),last=new Date(fim+'T12:00:00');
-      while(dt<=last){const d=isoDate(dt);const due=patientDue(p,d);if(due){if(isLocked(d,p.habitual_time)||sessionForDateTime(d,p.habitual_time)||get('SELECT 1 FROM personal_events WHERE event_date=? AND event_time=? LIMIT 1',d,p.habitual_time)){skipped++;}else{db.prepare('INSERT INTO sessions (patient_id,session_date,session_time,status,value,notes,slot_removed,created_at) VALUES (?,?,?,?,?,?,0,?)').run(p.id,d,p.habitual_time,'Agendada',p.fee,null,nowIso());created++;}}dt.setDate(dt.getDate()+1);}
-      return json(res,200,{created,skipped});
+      return json(res,200,fillPatientAgenda(p,inicio,fim));
     }
 
     // Popular agenda a partir do cadastro dos pacientes
     if(url.pathname==='/api/agenda/popular' && req.method==='POST') {
-      const b=await body(req); const inicio=b.inicio||new Date().toISOString().slice(0,10), fim=b.fim;
+      const b=await body(req); const inicio=b.inicio||today(), fim=b.fim;
       if(!fim) return json(res,400,{error:'Data final é obrigatória'});
       if(inicio>fim) return json(res,400,{error:'A data final não pode ser anterior à inicial'});
       const patients=all(`SELECT * FROM patients WHERE COALESCE(active,1)=1 AND weekday IS NOT NULL AND habitual_time IS NOT NULL AND habitual_time<>'' ORDER BY name`);
-      let created=0, skipped=0, dt=new Date(inicio+'T12:00:00'), last=new Date(fim+'T12:00:00');
-      while(dt<=last){
-        const d=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
-        const dow=dt.getDay();
-        for(const p of patients.filter(x=>patientDue(x,d))){
-          if(isLocked(d,p.habitual_time) || sessionForDateTime(d,p.habitual_time) || get('SELECT 1 FROM personal_events WHERE event_date=? AND event_time=? LIMIT 1',d,p.habitual_time)){ skipped++; continue; }
-          db.prepare('INSERT INTO sessions (patient_id,session_date,session_time,status,value,notes,slot_removed,created_at) VALUES (?,?,?,?,?,?,0,?)').run(p.id,d,p.habitual_time,'Agendada',p.fee,null,nowIso());
-          created++;
-        }
-        dt.setDate(dt.getDate()+1);
-      }
+      let created=0, skipped=0;
+      for(const p of patients){ const r=fillPatientAgenda(p,inicio,fim); created+=r.created; skipped+=r.skipped; }
       return json(res,201,{created,skipped});
     }
     // Personal events
@@ -371,9 +334,8 @@ async function api(req,res,url) {
       let created=[];
       let seriesId=null;
       for(let i=0;i<count;i++){
-        const dt=new Date(b.data+'T12:00:00');
-        dt.setDate(dt.getDate()+i*7);
-        const d=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+        const dt=new Date(b.data+'T12:00:00'); dt.setDate(dt.getDate()+i*7);
+        const d=isoDate(dt);
         if(isLocked(d,b.horario)) { if(!repeat) return json(res,409,{error:'Este horário está travado'}); continue; }
         const collision=checkCollision(d,b.horario);
         if(collision) { if(!repeat) return json(res,409,{error:`Horário já ocupado em ${d}`}); continue; }
@@ -402,15 +364,12 @@ async function api(req,res,url) {
       if(!startDate||!endDate||!b.motivo) return json(res,400,{error:'Data inicial, data final e motivo são obrigatórios'});
       if(startDate>endDate) return json(res,400,{error:'A data final não pode ser anterior à inicial'});
       const start=b.horario||null, end=b.horario||null, created=[];
-      let dt=new Date(startDate+'T12:00:00'), last=new Date(endDate+'T12:00:00');
-      while(dt<=last){
-        const d=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+      eachDay(startDate,endDate,d=>{
         if(!isLocked(d,start)){
           const info=db.prepare('INSERT INTO agenda_locks (lock_date,start_time,end_time,reason) VALUES (?,?,?,?)').run(d,start,end,b.motivo);
           created.push(get('SELECT * FROM agenda_locks WHERE id=?',info.lastInsertRowid));
         }
-        dt.setDate(dt.getDate()+1);
-      }
+      });
       return json(res,201,{locks:created});
     }
     m=url.pathname.match(/^\/api\/travar\/(\d+)$/);
@@ -431,7 +390,7 @@ async function api(req,res,url) {
       if(!date) return json(res,400,{error:'Data é obrigatória'});
       if((date!==old.session_date || time!==old.session_time) && isLocked(date,time)) return json(res,409,{error:'Este horário está travado'});
       const collision=checkCollision(date,time,id);
-      if(collision) return json(res,409,{error:collision.type==='lock'?`Horário travado: ${collision.lock.reason}`:`Horário já ocupado por ${collision.session.patient_name}`});
+      if(collision) return json(res,409,{error:collisionError(collision)});
       const value=b.valor!==undefined?money(b.valor):old.value;
       const billableOverride=status==='Desmarcou'?0:null;
       db.prepare('UPDATE sessions SET patient_id=?,session_date=?,session_time=?,status=?,value=?,notes=?,billable_override=? WHERE id=?').run(patientId,date,time,status,value,b.observacao!==undefined?b.observacao:old.notes,billableOverride,id);
@@ -461,32 +420,6 @@ async function api(req,res,url) {
     }
     if(pm && req.method==='DELETE') { db.prepare('DELETE FROM payments WHERE id=?').run(pm[1]); return json(res,200,{ok:true}); }
 
-    // Editable accounts payable / receivable
-    if(url.pathname==='/api/contas' && req.method==='GET') {
-      const type=url.searchParams.get('tipo');
-      const sql=`SELECT f.*, p.name AS patient_name FROM financial_entries f LEFT JOIN patients p ON p.id=f.patient_id ${type?'WHERE f.type=?':''} ORDER BY COALESCE(f.due_date,'9999-12-31') DESC, f.id DESC`;
-      return json(res,200,type?all(sql,type):all(sql));
-    }
-    if(url.pathname==='/api/contas' && req.method==='POST') {
-      const b=await body(req);
-      if(!['receber','pagar'].includes(b.tipo) || !String(b.descricao||'').trim() || b.valor==null) return json(res,400,{error:'Tipo, descrição e valor são obrigatórios'});
-      const status=b.status||'Aberto';
-      const info=db.prepare(`INSERT INTO financial_entries (type,description,amount,due_date,paid_date,status,patient_id,notes) VALUES (?,?,?,?,?,?,?,?)`).run(
-        b.tipo,String(b.descricao).trim(),money(b.valor),b.vencimento||null,b.data_pagamento||null,status,b.patient_id?Number(b.patient_id):null,b.observacao||null);
-      return json(res,201,get('SELECT * FROM financial_entries WHERE id=?',info.lastInsertRowid));
-    }
-    let cm=url.pathname.match(/^\/api\/contas\/(\d+)$/);
-    if(cm && req.method==='PATCH') {
-      const old=get('SELECT * FROM financial_entries WHERE id=?',cm[1]); if(!old) return json(res,404,{error:'Conta não encontrada'});
-      const b=await body(req);
-      db.prepare(`UPDATE financial_entries SET type=?,description=?,amount=?,due_date=?,paid_date=?,status=?,patient_id=?,notes=? WHERE id=?`).run(
-        b.tipo||old.type,b.descricao!==undefined?String(b.descricao):old.description,b.valor!==undefined?money(b.valor):old.amount,
-        b.vencimento!==undefined?(b.vencimento||null):old.due_date,b.data_pagamento!==undefined?(b.data_pagamento||null):old.paid_date,
-        b.status||old.status,b.patient_id!==undefined?(b.patient_id?Number(b.patient_id):null):old.patient_id,b.observacao!==undefined?b.observacao:old.notes,cm[1]);
-      return json(res,200,get('SELECT * FROM financial_entries WHERE id=?',cm[1]));
-    }
-    if(cm && req.method==='DELETE') { db.prepare('DELETE FROM financial_entries WHERE id=?').run(cm[1]); return json(res,200,{ok:true}); }
-
     // Finance drill-down and payment entry
     if(url.pathname==='/api/financeiro/previsao' && req.method==='GET') {
       const weeks=Math.max(1,Math.min(12,Number(url.searchParams.get('weeks')||4)));
@@ -510,22 +443,19 @@ async function api(req,res,url) {
       return json(res,200,{weeks,start:isoDate(start),total,qtd,periodos:out});
     }
     if(url.pathname==='/api/financeiro/resumo' && req.method==='GET') {
-      const mes=url.searchParams.get('mes')||new Date().toISOString().slice(0,7);
+      const mes=url.searchParams.get('mes')||thisMonth();
       const atendimento=get(`SELECT COALESCE(SUM(CASE WHEN status='Realizada' THEN value ELSE 0 END),0) valor, COUNT(CASE WHEN status='Realizada' THEN 1 END) qtd FROM sessions WHERE substr(session_date,1,7)=?`,mes);
       const rec=get(`SELECT COALESCE(SUM(amount),0) valor, COUNT(*) qtd FROM payments WHERE substr(payment_date,1,7)=?`,mes);
-      const realizadas=atendimento;
-      const late=get(`SELECT COALESCE(SUM(value),0) valor, COUNT(*) qtd FROM sessions WHERE substr(session_date,1,7)=? AND status='Desmarcou' AND 1=0 AND rescheduled_to_id IS NULL`,mes);
       const faltas=get(`SELECT COALESCE(SUM(value),0) valor, COUNT(*) qtd FROM sessions WHERE substr(session_date,1,7)=? AND status='Faltou'`,mes);
       const reag=get(`SELECT COALESCE(SUM(value),0) valor, COUNT(*) qtd FROM sessions WHERE substr(session_date,1,7)=? AND rescheduled_to_id IS NOT NULL`,mes);
-      const antecip=get(`SELECT COALESCE(SUM(value),0) valor, COUNT(*) qtd FROM sessions WHERE substr(session_date,1,7)=? AND status='Desmarcou' AND COALESCE(billable_override,0)=0`,mes);
       const unpaid=unpaidSessionRows();
       const due=unpaid.reduce((a,x)=>a+x.remaining,0);
       const today=new Date(); today.setHours(0,0,0,0); const cutoff=new Date(today); cutoff.setDate(cutoff.getDate()-30);
       const atrasados=unpaid.filter(x=>new Date(x.session_date+'T12:00:00')<=cutoff);
-      return json(res,200,{mes,atendimento,devido:{valor:due,qtd:unpaid.length},recebimentos:rec,realizadas,canceladas_hora:late,faltas,reagendadas:reag,antecipadas:antecip,atrasados:{valor:atrasados.reduce((a,x)=>a+x.remaining,0),qtd:atrasados.length}});
+      return json(res,200,{mes,atendimento,devido:{valor:due,qtd:unpaid.length},recebimentos:rec,realizadas:atendimento,faltas,reagendadas:reag,atrasados:{valor:atrasados.reduce((a,x)=>a+x.remaining,0),qtd:atrasados.length}});
     }
     if(url.pathname==='/api/financeiro/detalhes' && req.method==='GET') {
-      const mes=url.searchParams.get('mes')||new Date().toISOString().slice(0,7), tipo=url.searchParams.get('tipo')||'recebimentos';
+      const mes=url.searchParams.get('mes')||thisMonth(), tipo=url.searchParams.get('tipo')||'recebimentos';
       if(tipo==='recebimentos') return json(res,200,all(`SELECT pg.id,pg.payment_date AS data,pg.amount AS valor,p.name AS paciente_name,pg.notes AS observacao FROM payments pg JOIN patients p ON p.id=pg.patient_id WHERE substr(pg.payment_date,1,7)=? ORDER BY p.name,pg.payment_date,pg.id`,mes));
       if(tipo==='devido'){
         const rows=unpaidSessionRows().sort((a,b)=>a.patient_name.localeCompare(b.patient_name)||a.session_date.localeCompare(b.session_date));
@@ -536,62 +466,26 @@ async function api(req,res,url) {
         const rows=unpaidSessionRows().filter(x=>new Date(x.session_date+'T12:00:00')<=cutoff).sort((a,b)=>a.patient_name.localeCompare(b.patient_name)||a.session_date.localeCompare(b.session_date));
         return json(res,200,rows.map(x=>({id:x.id,data:x.session_date,horario:x.session_time,valor:x.remaining,status:x.status,paciente_name:x.patient_name,observacao:x.notes,dias:Math.floor((Date.now()-new Date(x.session_date+'T12:00:00').getTime())/86400000)})));
       }
-      const map={realizadas:"status='Realizada'",canceladas_hora:"status='Desmarcou' AND 1=0 AND rescheduled_to_id IS NULL",faltas:"status='Faltou'",cancel_faltas:"(status='Desmarcou' AND 1=0) OR status='Faltou'",antecipadas:"status='Desmarcou' AND COALESCE(billable_override,0)=0",reagendadas:"rescheduled_to_id IS NOT NULL"};
+      const map={realizadas:"status='Realizada'",faltas:"status='Faltou'",reagendadas:"rescheduled_to_id IS NOT NULL"};
       const where=map[tipo]||map.realizadas;
       const isYear=/^\d{4}$/.test(mes);
       const period=isYear?`substr(s.session_date,1,4)=?`:`substr(s.session_date,1,7)=?`;
       return json(res,200,all(`SELECT s.id,s.session_date AS data,s.session_time AS horario,s.value AS valor,s.status,p.name AS paciente_name,s.notes AS observacao FROM sessions s JOIN patients p ON p.id=s.patient_id WHERE ${period} AND ${where} ORDER BY p.name,s.session_date,s.session_time,s.id`,mes));
-    }
-    // Summaries
-    if(url.pathname==='/api/resumo-semana' && req.method==='GET') {
-      const start=url.searchParams.get('start'), end=url.searchParams.get('end'); if(!start||!end) return json(res,400,{error:'start e end são obrigatórios'});
-      const s=get(`SELECT COUNT(*) total,
-        COALESCE(SUM(CASE WHEN status='Realizada' THEN 1 ELSE 0 END),0) realizadas,
-        COALESCE(SUM(CASE WHEN status='Desmarcou' AND 1=0 THEN 1 ELSE 0 END),0) cancel_hora,
-        COALESCE(SUM(CASE WHEN status='Desmarcou' AND 1=0 THEN value ELSE 0 END),0) valor_cancel_hora,
-        COALESCE(SUM(CASE WHEN status IN ('Desmarcou','Faltou') AND rescheduled_to_id IS NOT NULL THEN 1 ELSE 0 END),0) cancel_reag,
-        COALESCE(SUM(CASE WHEN status IN ('Desmarcou','Faltou') AND rescheduled_to_id IS NOT NULL THEN value ELSE 0 END),0) valor_cancel_reag,
-        COALESCE(SUM(CASE WHEN status='Faltou' THEN 1 ELSE 0 END),0) faltas,
-        COALESCE(SUM(CASE WHEN status='Faltou' THEN value ELSE 0 END),0) valor_faltas,
-        COALESCE(SUM(CASE WHEN status IN ('Realizada','Faltou') THEN value ELSE 0 END),0) devido
-        FROM sessions WHERE session_date BETWEEN ? AND ?`,start,end);
-      return json(res,200,s);
     }
     if(url.pathname==='/api/resumo-ano' && req.method==='GET') {
       const ano=String(url.searchParams.get('ano')||new Date().getFullYear());
       const out=[];
       for(let i=1;i<=12;i++){
         const mes=`${ano}-${String(i).padStart(2,'0')}`;
-        const atendimento=get(`SELECT COALESCE(SUM(CASE WHEN status='Realizada' THEN value ELSE 0 END),0) valor, COUNT(CASE WHEN status='Realizada' THEN 1 END) qtd FROM sessions WHERE substr(session_date,1,7)=?`,mes);
-        const rec=get(`SELECT COALESCE(SUM(amount),0) valor, COUNT(*) qtd FROM payments WHERE substr(payment_date,1,7)=?`,mes);
-        const late=get(`SELECT COALESCE(SUM(value),0) valor, COUNT(*) qtd FROM sessions WHERE substr(session_date,1,7)=? AND status='Desmarcou' AND 1=0 AND rescheduled_to_id IS NULL`,mes);
+        const atendimento=get(`SELECT COALESCE(SUM(value),0) valor, COUNT(*) qtd FROM sessions WHERE substr(session_date,1,7)=? AND status='Realizada'`,mes);
+        const rec=get(`SELECT COALESCE(SUM(amount),0) valor FROM payments WHERE substr(payment_date,1,7)=?`,mes);
         const faltas=get(`SELECT COALESCE(SUM(value),0) valor, COUNT(*) qtd FROM sessions WHERE substr(session_date,1,7)=? AND status='Faltou'`,mes);
         const reag=get(`SELECT COALESCE(SUM(value),0) valor, COUNT(*) qtd FROM sessions WHERE substr(session_date,1,7)=? AND rescheduled_to_id IS NOT NULL`,mes);
-        out.push({mes,atendimento_qtd:Number(atendimento.qtd||0),atendimento_valor:Number(atendimento.valor||0),sessoes_qtd:Number(atendimento.qtd||0),sessoes_valor:Number(atendimento.valor||0),recebimento:Number(rec.valor||0),cancel_hora_qtd:Number(late.qtd||0),cancel_hora_valor:Number(late.valor||0),faltas_qtd:Number(faltas.qtd||0),faltas_valor:Number(faltas.valor||0),reag_qtd:Number(reag.qtd||0),reag_valor:Number(reag.valor||0)});
+        out.push({mes,atendimento_qtd:atendimento.qtd,atendimento_valor:atendimento.valor,recebimento:rec.valor,faltas_qtd:faltas.qtd,faltas_valor:faltas.valor,reag_qtd:reag.qtd,reag_valor:reag.valor});
       }
-      const totals={
-        atendimento_qtd:out.reduce((a,x)=>a+x.atendimento_qtd,0),atendimento_valor:out.reduce((a,x)=>a+x.atendimento_valor,0),
-        sessoes_qtd:out.reduce((a,x)=>a+x.sessoes_qtd,0),sessoes_valor:out.reduce((a,x)=>a+x.sessoes_valor,0),
-        recebimento:out.reduce((a,x)=>a+x.recebimento,0),
-        cancel_hora_qtd:out.reduce((a,x)=>a+x.cancel_hora_qtd,0),cancel_hora_valor:out.reduce((a,x)=>a+x.cancel_hora_valor,0),
-        faltas_qtd:out.reduce((a,x)=>a+x.faltas_qtd,0),faltas_valor:out.reduce((a,x)=>a+x.faltas_valor,0),
-        reag_qtd:out.reduce((a,x)=>a+x.reag_qtd,0),reag_valor:out.reduce((a,x)=>a+x.reag_valor,0)
-      };
-      const historical=all(`SELECT substr(session_date,1,4) ano, COUNT(CASE WHEN status='Realizada' THEN 1 END) sessoes_qtd, COALESCE(SUM(CASE WHEN status='Realizada' THEN value ELSE 0 END),0) sessoes_valor FROM sessions WHERE substr(session_date,1,4)<>? GROUP BY substr(session_date,1,4) ORDER BY ano`,ano);
-      return json(res,200,{ano,meses:out,totals,historical});
-    }
-    if(url.pathname==='/api/dashboard' && req.method==='GET') {
-      const mes=url.searchParams.get('mes')||new Date().toISOString().slice(0,7);
-      const s=get(`SELECT COUNT(*) total_sessoes,
-        COALESCE(SUM(CASE WHEN status='Realizada' THEN value ELSE 0 END),0) faturado,
-        COALESCE(SUM(CASE WHEN status IN ('Realizada','Faltou') THEN value ELSE 0 END),0) devido,
-        COALESCE(SUM(CASE WHEN status='Realizada' THEN 1 ELSE 0 END),0) realizadas,
-        COALESCE(SUM(CASE WHEN status='Desmarcou' AND COALESCE(billable_override,0)=0 THEN 1 ELSE 0 END),0) canceladas,
-        COALESCE(SUM(CASE WHEN status='Desmarcou' AND 1=0 THEN 1 ELSE 0 END),0) canceladas_hora,
-        COALESCE(SUM(CASE WHEN status='Faltou' THEN 1 ELSE 0 END),0) faltas
-        FROM sessions WHERE substr(session_date,1,7)=?`,mes);
-      const r=get('SELECT COALESCE(SUM(amount),0) recebido FROM payments WHERE substr(payment_date,1,7)=?',mes);
-      return json(res,200,{...s,recebido:r.recebido,saldo:Math.max(0,Number(s.devido||0)-Number(r.recebido||0))});
+      const totals={};
+      for(const k of Object.keys(out[0]).filter(k=>k!=='mes')) totals[k]=out.reduce((a,x)=>a+x[k],0);
+      return json(res,200,{ano,meses:out,totals});
     }
     return json(res,404,{error:'Rota não encontrada'});
   } catch(e) { console.error(e); return json(res,500,{error:e.message}); }
