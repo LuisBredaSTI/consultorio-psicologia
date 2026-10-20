@@ -90,7 +90,10 @@ const today = () => isoDate(new Date());
 const thisMonth = () => today().slice(0,7);
 function eachDay(from, to, fn){ for(const dt=new Date(from+'T12:00:00'), last=new Date(to+'T12:00:00'); dt<=last; dt.setDate(dt.getDate()+1)) fn(isoDate(dt)); }
 function groupBy(rows, key){ const m=new Map(); for(const r of rows){ if(!m.has(r[key])) m.set(r[key],[]); m.get(r[key]).push(r); } return m; }
-const collisionError = c => c.type==='lock' ? `Horário travado: ${c.lock.reason}` : `Horário já ocupado por ${c.session.patient_name}`;
+const weeksCount = n => Math.max(1,Math.min(52,Number(n)||16));
+const collisionError = c => c.type==='lock' ? `Horário travado: ${c.lock.reason}`
+  : c.type==='event' ? `Horário já ocupado por compromisso pessoal: ${c.event.title}`
+  : `Horário já ocupado por ${c.session.patient_name}`;
 const money = v => Number(v || 0);
 const xmlEsc = v => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 const excelCell = (value, type='String') => `<Cell><Data ss:Type="${type}">${xmlEsc(value)}</Data></Cell>`;
@@ -104,24 +107,23 @@ function excelXml(workbookName, sheets){
 function isLocked(date, time=null) {
   const day = get('SELECT * FROM agenda_locks WHERE lock_date=? AND start_time IS NULL LIMIT 1', date);
   if (day) return day;
-  if (time) return get('SELECT * FROM agenda_locks WHERE lock_date=? AND start_time=? LIMIT 1', date, time);
+  if (time) return get('SELECT * FROM agenda_locks WHERE lock_date=? AND substr(start_time,1,2)=substr(?,1,2) LIMIT 1', date, time);
   return null;
 }
 function sessionById(id) {
   return get(`SELECT s.*, p.name AS patient_name, p.whatsapp, p.fee AS patient_fee
               FROM sessions s JOIN patients p ON p.id=s.patient_id WHERE s.id=?`, id);
 }
-function sessionForDateTime(date,time){
-  return get(`SELECT s.* FROM sessions s WHERE s.session_date=? AND s.session_time=? AND COALESCE(s.slot_removed,0)=0 AND s.status<>'Desmarcou' LIMIT 1`,date,time);
-}
 function checkCollision(date, time, ignoreId=null) {
   if (!time) return null;
   const lock = isLocked(date, time); if (lock) return {type:'lock', lock};
   let sql=`SELECT s.*, p.name AS patient_name FROM sessions s JOIN patients p ON p.id=s.patient_id
-           WHERE s.session_date=? AND s.session_time=? AND COALESCE(s.slot_removed,0)=0 AND s.status<>'Desmarcou'`;
+           WHERE s.session_date=? AND substr(s.session_time,1,2)=substr(?,1,2) AND COALESCE(s.slot_removed,0)=0 AND s.status<>'Desmarcou'`;
   const params=[date,time];
   if (ignoreId) { sql += ' AND s.id<>?'; params.push(ignoreId); }
-  const s=get(sql,...params); return s ? {type:'session',session:s} : null;
+  const s=get(sql,...params); if (s) return {type:'session',session:s};
+  const event=get('SELECT * FROM personal_events WHERE event_date=? AND substr(event_time,1,2)=substr(?,1,2) LIMIT 1',date,time);
+  return event ? {type:'event',event} : null;
 }
 function normalizeValue(b, patientId) {
   if (b.valor !== undefined && b.valor !== null && b.valor !== '') return money(b.valor);
@@ -151,14 +153,19 @@ function unpaidSessionRows() {
   return out;
 }
 
+function insertSession(patientId, date, time, status, value, notes){
+  return db.prepare('INSERT INTO sessions (patient_id,session_date,session_time,status,value,notes,slot_removed,created_at) VALUES (?,?,?,?,?,?,0,?)')
+    .run(patientId,date,time,status,value,notes||null,nowIso()).lastInsertRowid;
+}
 // Cria as sessões 'Agendada' do paciente nos dias previstos pelo cadastro entre inicio e fim.
+// Pula horários ocupados/travados e dias em que o paciente já tem sessão (de qualquer status),
+// para não recriar o que foi desmarcado, reagendado ou excluído.
 function fillPatientAgenda(p, inicio, fim){
   let created=0, skipped=0; const t=p.habitual_time;
   eachDay(inicio, fim, d=>{
     if(!patientDue(p,d)) return;
-    if(isLocked(d,t) || sessionForDateTime(d,t) || get('SELECT 1 FROM personal_events WHERE event_date=? AND event_time=? LIMIT 1',d,t)){ skipped++; return; }
-    db.prepare('INSERT INTO sessions (patient_id,session_date,session_time,status,value,notes,slot_removed,created_at) VALUES (?,?,?,?,?,?,0,?)').run(p.id,d,t,'Agendada',p.fee,null,nowIso());
-    created++;
+    if(checkCollision(d,t) || get('SELECT 1 FROM sessions WHERE patient_id=? AND session_date=?',p.id,d)){ skipped++; return; }
+    insertSession(p.id,d,t,'Agendada',p.fee,null); created++;
   });
   return {created,skipped};
 }
@@ -274,8 +281,16 @@ async function api(req,res,url) {
       if(!STATUSES.includes(b.status)) return json(res,400,{error:'Status inválido'});
       const collision=checkCollision(b.data,b.horario||null); if(collision) return json(res,409,{error:collisionError(collision)});
       const value=normalizeValue(b,b.patient_id);
-      const info=db.prepare('INSERT INTO sessions (patient_id,session_date,session_time,status,value,notes,slot_removed,created_at) VALUES (?,?,?,?,?,?,0,?)').run(b.patient_id,b.data,b.horario||null,b.status,value,b.observacao||null,nowIso());
-      return json(res,201,sessionById(info.lastInsertRowid));
+      const firstId=insertSession(b.patient_id,b.data,b.horario||null,b.status,value,b.observacao);
+      let criadas=1, ignoradas=0;
+      if(b.repetir && b.horario){ // mesmas data e horário nas semanas seguintes, pulando conflitos
+        for(let i=1;i<weeksCount(b.semanas);i++){
+          const dt=new Date(b.data+'T12:00:00'); dt.setDate(dt.getDate()+i*7); const d=isoDate(dt);
+          if(checkCollision(d,b.horario)){ ignoradas++; continue; }
+          insertSession(b.patient_id,d,b.horario,b.status,value,b.observacao); criadas++;
+        }
+      }
+      return json(res,201,{...sessionById(firstId),criadas,ignoradas});
     }
     let rm=url.pathname.match(/^\/api\/sessoes\/(\d+)\/reagendar$/);
     if(rm && req.method==='POST') {
@@ -296,12 +311,23 @@ async function api(req,res,url) {
       if(!STATUSES.includes(status)) return json(res,400,{error:'Status inválido'});
       if((date!==old.session_date || time!==old.session_time) && ['Realizada','Faltou'].includes(old.status)) return json(res,409,{error:'Sessões Realizada e Faltou não podem ser remanejadas.'});
       if(isLocked(date,time) && (date!==old.session_date || time!==old.session_time || b.status!==undefined)) return json(res,409,{error:'Este horário está travado'});
-      const collision=checkCollision(date,time,id); if(collision) return json(res,409,{error:collisionError(collision)});
-      const value=b.valor!==undefined?money(b.valor):old.value;
       const slotRemoved=b.slot_removed!==undefined?Number(!!b.slot_removed):Number(old.slot_removed||0);
+      const occupiedBefore=old.status!=='Desmarcou' && !Number(old.slot_removed), occupiesNow=status!=='Desmarcou' && !slotRemoved;
+      const moved=date!==old.session_date || time!==old.session_time;
+      const collision=occupiesNow && (moved || !occupiedBefore) ? checkCollision(date,time,id) : null; if(collision) return json(res,409,{error:collisionError(collision)});
+      const value=b.valor!==undefined?money(b.valor):old.value;
       const billableOverride=status==='Desmarcou'?0:null;
       db.prepare('UPDATE sessions SET session_date=?,session_time=?,status=?,value=?,notes=?,slot_removed=?,billable_override=? WHERE id=?').run(date,time,status,value,b.observacao!==undefined?b.observacao:old.notes,slotRemoved,billableOverride,id);
       return json(res,200,sessionById(id));
+    }
+
+    // Exclui os agendamentos futuros (status Agendada) do paciente. Mantém realizadas, faltas,
+    // desmarcadas e as sessões criadas por reagendamento.
+    let delSched=url.pathname.match(/^\/api\/pacientes\/(\d+)\/agendamentos$/);
+    if(delSched && req.method==='DELETE') {
+      if(!get('SELECT id FROM patients WHERE id=?',delSched[1])) return json(res,404,{error:'Paciente não encontrado'});
+      const r=db.prepare("DELETE FROM sessions WHERE patient_id=? AND status='Agendada' AND session_date>=? AND rescheduled_from_id IS NULL").run(delSched[1],today());
+      return json(res,200,{deleted:Number(r.changes)});
     }
 
     // Popular somente a agenda do paciente cujo horário foi alterado.
@@ -327,25 +353,20 @@ async function api(req,res,url) {
     if(url.pathname==='/api/eventos' && req.method==='POST') {
       const b=await body(req);
       if(!b.data||!b.horario||!String(b.titulo||'').trim()) return json(res,400,{error:'Data, horário e título são obrigatórios'});
-      if(isLocked(b.data,b.horario)) return json(res,409,{error:'Este horário está travado'});
-      if(checkCollision(b.data,b.horario)) return json(res,409,{error:`Horário já ocupado por ${checkCollision(b.data,b.horario).session?.patient_name||'uma sessão'}`});
+      const first=checkCollision(b.data,b.horario); if(first) return json(res,409,{error:collisionError(first)});
       const repeat=!!b.repetir;
-      const count=repeat?Math.max(1,Math.min(52,Number(b.semanas||16))):1;
-      let created=[];
-      let seriesId=null;
+      const count=repeat?weeksCount(b.semanas):1;
+      let created=[], skipped=0, seriesId=null;
       for(let i=0;i<count;i++){
-        const dt=new Date(b.data+'T12:00:00'); dt.setDate(dt.getDate()+i*7);
-        const d=isoDate(dt);
-        if(isLocked(d,b.horario)) { if(!repeat) return json(res,409,{error:'Este horário está travado'}); continue; }
-        const collision=checkCollision(d,b.horario);
-        if(collision) { if(!repeat) return json(res,409,{error:`Horário já ocupado em ${d}`}); continue; }
+        const dt=new Date(b.data+'T12:00:00'); dt.setDate(dt.getDate()+i*7); const d=isoDate(dt);
+        if(checkCollision(d,b.horario)){ skipped++; continue; }
         const info=db.prepare('INSERT INTO personal_events (event_date,event_time,title,notes,series_id) VALUES (?,?,?,?,NULL)')
           .run(d,b.horario,String(b.titulo).trim(),b.observacao||null);
         if(seriesId===null) seriesId=Number(info.lastInsertRowid);
         db.prepare('UPDATE personal_events SET series_id=? WHERE id=?').run(seriesId,info.lastInsertRowid);
         created.push(get('SELECT * FROM personal_events WHERE id=?',info.lastInsertRowid));
       }
-      return json(res,201,{eventos:created,series_id:seriesId});
+      return json(res,201,{eventos:created,skipped,series_id:seriesId});
     }
     m=url.pathname.match(/^\/api\/eventos\/(\d+)$/);
     if(m && req.method==='DELETE') {
@@ -389,7 +410,8 @@ async function api(req,res,url) {
       if(!patientId) return json(res,400,{error:'Paciente é obrigatório'});
       if(!date) return json(res,400,{error:'Data é obrigatória'});
       if((date!==old.session_date || time!==old.session_time) && isLocked(date,time)) return json(res,409,{error:'Este horário está travado'});
-      const collision=checkCollision(date,time,id);
+      const occupies=status!=='Desmarcou' && (date!==old.session_date || time!==old.session_time || old.status==='Desmarcou');
+      const collision=occupies ? checkCollision(date,time,id) : null;
       if(collision) return json(res,409,{error:collisionError(collision)});
       const value=b.valor!==undefined?money(b.valor):old.value;
       const billableOverride=status==='Desmarcou'?0:null;

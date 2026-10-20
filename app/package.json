@@ -1,6 +1,6 @@
 {
   "name": "consultorio-psicologia",
-  "version": "28.1.2",
+  "version": "28.2.0",
   "private": true,
   "description": "Controle administrativo e financeiro de consultório psicológico",
   "main": "server.js",
