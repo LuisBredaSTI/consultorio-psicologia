@@ -83,7 +83,11 @@ db.exec(`CREATE TABLE IF NOT EXISTS patient_attachments (
 )`);
 db.exec('CREATE INDEX IF NOT EXISTS idx_patient_attachments_patient ON patient_attachments(patient_id, created_at)');
 
-const STATUSES = ['Agendada','Realizada','Desmarcou','Faltou'];
+const STATUSES = ['Agendada','Realizada','Desmarcou','Desmarquei','Faltou'];
+// Desmarcou = o paciente desmarcou; Desmarquei = a profissional desmarcou. Nenhum dos dois gera cobrança
+// e ambos liberam o horário (podem voltar a Agendada enquanto o horário estiver livre).
+const FREES_SLOT = ['Desmarcou','Desmarquei'];
+const freesSlot = status => FREES_SLOT.includes(status);
 const json = (res, status, data) => { const body = JSON.stringify(data); res.writeHead(status, {'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}); res.end(body); };
 const all = (sql, ...params) => db.prepare(sql).all(...params);
 const get = (sql, ...params) => db.prepare(sql).get(...params);
@@ -133,7 +137,7 @@ function checkCollision(date, time, ignoreId=null) {
   if (!time) return null;
   const lock = isLocked(date, time); if (lock) return {type:'lock', lock};
   let sql=`SELECT s.*, p.name AS patient_name FROM sessions s JOIN patients p ON p.id=s.patient_id
-           WHERE s.session_date=? AND substr(s.session_time,1,2)=substr(?,1,2) AND COALESCE(s.slot_removed,0)=0 AND s.status<>'Desmarcou'`;
+           WHERE s.session_date=? AND substr(s.session_time,1,2)=substr(?,1,2) AND COALESCE(s.slot_removed,0)=0 AND s.status NOT IN ('Desmarcou','Desmarquei')`;
   const params=[date,time];
   if (ignoreId) { sql += ' AND s.id<>?'; params.push(ignoreId); }
   const s=get(sql,...params); if (s) return {type:'session',session:s};
@@ -327,11 +331,11 @@ async function api(req,res,url) {
       if((date!==old.session_date || time!==old.session_time) && ['Realizada','Faltou'].includes(old.status)) return json(res,409,{error:'Sessões Realizada e Faltou não podem ser remanejadas.'});
       if(isLocked(date,time) && (date!==old.session_date || time!==old.session_time || b.status!==undefined)) return json(res,409,{error:'Este horário está travado'});
       const slotRemoved=b.slot_removed!==undefined?Number(!!b.slot_removed):Number(old.slot_removed||0);
-      const occupiedBefore=old.status!=='Desmarcou' && !Number(old.slot_removed), occupiesNow=status!=='Desmarcou' && !slotRemoved;
+      const occupiedBefore=!freesSlot(old.status) && !Number(old.slot_removed), occupiesNow=!freesSlot(status) && !slotRemoved;
       const moved=date!==old.session_date || time!==old.session_time;
       const collision=occupiesNow && (moved || !occupiedBefore) ? checkCollision(date,time,id) : null; if(collision) return json(res,409,{error:collisionError(collision)});
       const value=b.valor!==undefined?money(b.valor):old.value;
-      const billableOverride=status==='Desmarcou'?0:null;
+      const billableOverride=freesSlot(status)?0:null;
       db.prepare('UPDATE sessions SET session_date=?,session_time=?,status=?,value=?,notes=?,slot_removed=?,billable_override=? WHERE id=?').run(date,time,status,value,b.observacao!==undefined?b.observacao:old.notes,slotRemoved,billableOverride,id);
       return json(res,200,sessionById(id));
     }
@@ -425,11 +429,11 @@ async function api(req,res,url) {
       if(!patientId) return json(res,400,{error:'Paciente é obrigatório'});
       if(!date) return json(res,400,{error:'Data é obrigatória'});
       if((date!==old.session_date || time!==old.session_time) && isLocked(date,time)) return json(res,409,{error:'Este horário está travado'});
-      const occupies=status!=='Desmarcou' && (date!==old.session_date || time!==old.session_time || old.status==='Desmarcou');
+      const occupies=!freesSlot(status) && (date!==old.session_date || time!==old.session_time || freesSlot(old.status));
       const collision=occupies ? checkCollision(date,time,id) : null;
       if(collision) return json(res,409,{error:collisionError(collision)});
       const value=b.valor!==undefined?money(b.valor):old.value;
-      const billableOverride=status==='Desmarcou'?0:null;
+      const billableOverride=freesSlot(status)?0:null;
       db.prepare('UPDATE sessions SET patient_id=?,session_date=?,session_time=?,status=?,value=?,notes=?,billable_override=? WHERE id=?').run(patientId,date,time,status,value,b.observacao!==undefined?b.observacao:old.notes,billableOverride,id);
       return json(res,200,sessionById(id));
     }

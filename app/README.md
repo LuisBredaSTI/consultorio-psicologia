@@ -1,5 +1,7 @@
-# Consultório de Psicologia — V28.2.1
+# Consultório de Psicologia — V28.3.0
 
+- Novo status "Desmarquei" (a profissional desmarcou): libera o horário e não gera financeiro.
+- "Desmarcou" e "Desmarquei" são reversíveis: clique na linha cinza da agenda para voltar para Agendada ou reagendar.
 - Compromissos pessoais em horários quebrados (ex.: 08:40) aparecem no slot da hora; conflitos são verificados por hora.
 - Agendar sessão tem a opção de repetir nas próximas semanas (no mesmo dia e horário).
 - Botão "Excluir agendamentos" no cadastro de pacientes: remove os agendamentos futuros e oferece gerar de novo conforme o cadastro.
