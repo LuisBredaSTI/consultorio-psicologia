@@ -1,5 +1,6 @@
-# Consultório de Psicologia — V28.3.0
+# Consultório de Psicologia — V28.3.1
 
+- Atalho aponta para Consultorio.exe (em vez do PowerShell) e há uma cópia no Menu Iniciar: evita que o antivírus remova o atalho.
 - Novo status "Desmarquei" (a profissional desmarcou): libera o horário e não gera financeiro.
 - "Desmarcou" e "Desmarquei" são reversíveis: clique na linha cinza da agenda para voltar para Agendada ou reagendar.
 - Compromissos pessoais em horários quebrados (ex.: 08:40) aparecem no slot da hora; conflitos são verificados por hora.
