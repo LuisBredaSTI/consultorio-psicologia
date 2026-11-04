@@ -1,5 +1,6 @@
-# Consultório de Psicologia — V28.3.1
+# Consultório de Psicologia — V28.4.0
 
+- Financeiro > Importar planilha: lê a planilha de controle (.xlsx), mostra a prévia por paciente (sessões cobradas, pagamentos, saldos) e aplica após confirmação, com cópia de segurança do banco e conferência de saldos.
 - Atalho aponta para Consultorio.exe (em vez do PowerShell) e há uma cópia no Menu Iniciar: evita que o antivírus remova o atalho.
 - Novo status "Desmarquei" (a profissional desmarcou): libera o horário e não gera financeiro.
 - "Desmarcou" e "Desmarquei" são reversíveis: clique na linha cinza da agenda para voltar para Agendada ou reagendar.
