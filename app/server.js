@@ -461,9 +461,10 @@ async function api(req,res,url) {
       if(!STATUSES.includes(status)) return json(res,400,{error:'Status inválido'});
       if(!patientId) return json(res,400,{error:'Paciente é obrigatório'});
       if(!date) return json(res,400,{error:'Data é obrigatória'});
-      if((date!==old.session_date || time!==old.session_time) && isLocked(date,time)) return json(res,409,{error:'Este horário está travado'});
+      const future=date>=today(); // datas passadas (histórico) não conflitam com a agenda
+      if(future && (date!==old.session_date || time!==old.session_time) && isLocked(date,time)) return json(res,409,{error:'Este horário está travado'});
       const occupies=!freesSlot(status) && (date!==old.session_date || time!==old.session_time || freesSlot(old.status));
-      const collision=occupies ? checkCollision(date,time,id) : null;
+      const collision=occupies && future ? checkCollision(date,time,id) : null;
       if(collision) return json(res,409,{error:collisionError(collision)});
       const value=b.valor!==undefined?money(b.valor):old.value;
       const billableOverride=freesSlot(status)?0:null;
