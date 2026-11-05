@@ -17,7 +17,7 @@ table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:7px 8px;
 .layout{position:relative}
 .patient-attachments-list{display:flex;flex-direction:column;gap:5px;max-height:150px;overflow:auto}.patient-attachment-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;background:#fafafa;border:1px solid var(--line);border-radius:7px;font-size:11px}.patient-attachment-row .meta{color:#777}.patient-attachment-row a{color:#3159a6;text-decoration:none}.patient-attachment-row button{padding:3px 6px;font-size:10px}
 .brand{padding:6px 11px 12px;line-height:1.2;text-align:left}.brand strong{display:block;font-size:17px}.brand small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
-.modal.wide{width:min(1180px,96vw)}
+
 .hist-table{width:100%;border-collapse:collapse;table-layout:fixed}.hist-table thead th{position:sticky;top:0;z-index:2;background:#fafafa;box-shadow:0 1px 0 var(--line);font-size:14px;text-align:left;padding:9px 10px}
 .hist-table td{padding:3px 6px;border-bottom:1px solid #f0f1f4}.hist-table th:nth-child(1),.hist-table td:nth-child(1){width:128px}.hist-table th:nth-child(2),.hist-table td:nth-child(2){width:112px}
 .hist-in{width:100%;box-sizing:border-box;padding:7px 9px;font-size:15px;font-family:inherit;border:1px solid transparent;border-radius:6px;background:transparent}.hist-in:hover,.hist-in:focus{border-color:#cfd3dc;background:#fff;outline:none}.hist-in.val{text-align:right}.hist-in:disabled{color:#9aa0ab}
@@ -31,13 +31,14 @@ nav .logo svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:1.9;stro
 nav button{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;margin:0;border:0;background:transparent;border-radius:10px;font:inherit;font-size:15px;font-weight:500;color:#4b5263;text-align:left;cursor:pointer}
 nav button svg{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 nav button:hover{background:#f3f4f8}nav button.active{background:var(--brand-soft);color:var(--brand);font-weight:650}
-@media(max-width:1500px){nav .brand-text,nav button span{display:none}nav button{justify-content:center;padding:12px 0}nav .brand{justify-content:center;padding:0 0 16px}}
+nav .zoomctl{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:4px;padding:10px 4px 0;border-top:1px solid var(--line)}nav .zoomctl button{width:32px;height:32px;padding:0;margin:0;justify-content:center;font-size:17px;font-weight:600;border:1px solid var(--line);background:#fff;border-radius:8px}nav .zoomctl button:hover{background:#f3f4f8}nav .zoomctl span{font-size:12.5px;font-weight:650;color:var(--muted);cursor:pointer;text-align:center;flex:1}
+@media(max-width:1500px){nav .zoomctl{flex-direction:column-reverse;padding-top:8px}nav .zoomctl button{width:40px}nav .brand-text,nav button span{display:none}nav button{justify-content:center;padding:12px 0}nav .brand{justify-content:center;padding:0 0 16px}}
 main{flex:1;min-width:0;margin-left:var(--nav-w);padding:14px}
 svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;font-size:12.5px;font-weight:650;white-space:nowrap}.chip.g{background:var(--ok-soft);color:var(--ok)}.chip.a{background:var(--warn-soft);color:var(--warn)}.chip.n{background:#eef0f4;color:#5b6272}.chip.r{background:var(--bad-soft);color:var(--bad)}.chip.b{background:#e8f0ff;color:#2f5fd0}
 .avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:var(--brand);background:var(--brand-soft);flex:none}.avatar.lg{width:48px;height:48px;font-size:17px}
-#pacientes{font-size:15px;height:calc(100vh - 28px)}
-.pt{display:grid;grid-template-columns:clamp(250px,23vw,340px) minmax(0,1fr);height:100%;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+#pacientes{font-size:15px;height:var(--page-h,calc(100vh - 28px))}
+.pt{display:grid;grid-template-columns:clamp(250px,calc(var(--page-w,1100px)*.25),340px) minmax(0,1fr);height:100%;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .pt-list{border-right:1px solid var(--line);display:flex;flex-direction:column;gap:10px;padding:16px 14px;min-height:0}
 .pt-list-head{display:flex;justify-content:space-between;align-items:center}.pt-list-head h1{font-size:22px;margin:0}.pt-sub{font-size:13px;color:var(--muted)}
 .pt-search{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:0 10px;color:var(--muted)}.pt-search input{border:0;outline:0;padding:9px 0;flex:1;font-size:15px;background:transparent;min-width:0}
@@ -69,7 +70,7 @@ details.att summary{cursor:pointer;font-weight:650;font-size:15px}
 @media(max-width:1000px){.pt-cols{grid-template-columns:1fr}}
 /* ===== Agenda (novo visual) ===== */
 #inicio{font-size:14px}
-.ag{display:flex;gap:14px;height:calc(100vh - 28px)}.ag-main{flex:1;min-width:0;display:flex;flex-direction:column}
+.ag{display:flex;gap:14px;height:var(--page-h,calc(100vh - 28px))}.ag-main{flex:1;min-width:0;display:flex;flex-direction:column}
 .ag-top{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}.ag-top h1{font-size:22px;margin:0}
 .nav3{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}.nav3 button{border:0;background:transparent;padding:7px 13px;font:inherit;font-weight:600;font-size:13.5px;border-right:1px solid var(--line);cursor:pointer;margin:0;width:auto;display:inline-flex;align-items:center}.nav3 button:last-child{border:0}.nav3 button:hover{background:#f6f7fb}
 .weektitle{font-weight:700;font-size:15px}.weektitle .y{color:var(--muted);font-weight:500;margin-left:6px}
@@ -97,7 +98,7 @@ details.att summary{cursor:pointer;font-weight:650;font-size:15px}
 .lk{display:flex;align-items:center;gap:7px;min-height:34px;padding:0 10px;border-radius:8px;background:repeating-linear-gradient(135deg,#f1f2f6,#f1f2f6 6px,#e8eaf0 6px,#e8eaf0 12px);color:#6b7280;font-size:12.5px;font-weight:600;cursor:pointer}
 .ag-legend{display:flex;gap:14px;font-size:12.5px;color:var(--muted);margin:8px 2px 4px;align-items:center;flex-wrap:wrap}.ag-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
 .history{margin-top:8px}.history details{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px}.history table{margin-top:6px}
-.ag-panel{width:clamp(280px,22vw,340px);flex:none;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;overflow:auto}.ag-panel h2{margin:0;font-size:18px}.ag-panel .sub{color:var(--muted);font-size:13px}
+.ag-panel{width:clamp(280px,calc(var(--page-w,1100px)*.24),340px);flex:none;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;overflow:auto}.ag-panel h2{margin:0;font-size:18px}.ag-panel .sub{color:var(--muted);font-size:13px}
 .warnbox{background:var(--warn-soft);color:var(--warn);border:0;border-radius:10px;padding:9px 12px;font:inherit;font-weight:650;font-size:13px;text-align:left;cursor:pointer;width:100%;margin:0}
 .pi{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}.pi .h{display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer}.pi .h b{font-size:15px}.pi .tmx{font-size:12.5px;color:var(--muted);font-weight:600}
 .pi.done{background:#f8f9fb}.pi.done.ok{background:#f4fbf6;border-color:#cfe9d8}.pi.done.bad{background:#fff7f6;border-color:#f3c5c0}
@@ -135,6 +136,7 @@ details.att summary{cursor:pointer;font-weight:650;font-size:15px}
 <button class="active" onclick="show('inicio',this)" title="Agenda"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Agenda</span></button>
 <button onclick="show('pacientes',this)" title="Pacientes"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Pacientes</span></button>
 <button onclick="show('financeiro',this)" title="Financeiro"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8M12 6v2m0 8v2"/></svg><span>Financeiro</span></button>
+<div class="zoomctl"><button onclick="uiScale(-1)" title="Diminuir esta tela">−</button><span id="zoomVal" onclick="uiScaleReset()" title="Tamanho desta tela. Clique para voltar ao padrão">100%</span><button onclick="uiScale(1)" title="Aumentar esta tela">+</button></div>
 </nav>
 <main>
 <section id="inicio">
@@ -186,7 +188,20 @@ const DAYS=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']; const MONTHS=['janeiro'
 const TIMES=[]; for(let h=7;h<=20;h++) TIMES.push(String(h).padStart(2,'0')+':00');
 let weekStart=monday(new Date()),agendaData={sessoes:[],locks:[],eventos:[]};
 function pad(n){return String(n).padStart(2,'0')} function iso(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())} function dmy(v){if(!v)return '—';const p=String(v).slice(0,10).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:String(v)} function monday(d){let x=new Date(d);x.setHours(12,0,0,0);let day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x} function addDays(d,n){let x=new Date(d);x.setDate(x.getDate()+n);return x}
-function show(id,btn){document.querySelectorAll('main>section').forEach(s=>s.classList.add('hidden'));$(id).classList.remove('hidden');document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');if(id==='inicio'){loadAgenda()}if(id==='pacientes')loadPatients();if(id==='financeiro')loadFinance();}
+function show(id,btn){document.querySelectorAll('main>section').forEach(s=>s.classList.add('hidden'));$(id).classList.remove('hidden');document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');if(id==='inicio'){loadAgenda()}if(id==='pacientes')loadPatients();if(id==='financeiro')loadFinance();applyScale()}
+/* ===== Tamanho da tela (lembrado separadamente para cada tela) ===== */
+const SCALE_DEFAULT={inicio:.85,pacientes:1,financeiro:1};
+function scaleMap(){try{return JSON.parse(localStorage.getItem('uiScale')||'{}')}catch(e){return {}}}
+function saveScale(m){try{localStorage.setItem('uiScale',JSON.stringify(m))}catch(e){}}
+function currentSection(){const s=document.querySelector('main>section:not(.hidden)');return s?s.id:'inicio'}
+function getScale(id){const v=Number(scaleMap()[id]);return v>=.5&&v<=1.3?v:(SCALE_DEFAULT[id]||1)}
+// O zoom é aplicado só na tela aberta; as medidas que dependem da janela (altura/largura úteis) são compensadas.
+function applyScale(){const id=currentSection(),sec=$(id),z=getScale(id);sec.style.zoom=z;
+  sec.style.setProperty('--page-h',((window.innerHeight-28)/z)+'px');sec.style.setProperty('--page-w',((window.innerWidth-document.querySelector('nav').offsetWidth-28)/z)+'px');
+  $('zoomVal').textContent=Math.round(z*100)+'%'}
+function uiScale(step){const id=currentSection(),m=scaleMap();m[id]=Math.min(1.3,Math.max(.5,Math.round((getScale(id)+step*.05)*100)/100));saveScale(m);applyScale()}
+function uiScaleReset(){const id=currentSection(),m=scaleMap();delete m[id];saveScale(m);applyScale()}
+window.addEventListener('resize',applyScale);
 function toast(msg){$('toast').textContent=msg;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',2600)} function changeWeek(n){weekStart=addDays(weekStart,n*7);loadAgenda()} function goToday(){weekStart=monday(new Date());loadAgenda()}
 
 /* Caixas de diálogo próprias (substituem confirm/prompt do navegador) */
@@ -582,7 +597,7 @@ async function savePatientPaymentInline(id,el,field){
   const r=await fetch('/api/pagamentos/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(!r.ok)return toast(j.error||'Não foi possível salvar.');toast('Pagamento atualizado.');loadPatients();detail(x.patient_id);
 }
 
-loadPatientHistoryFrom();loadAgenda();
+loadPatientHistoryFrom();applyScale();loadAgenda();
 </script>
 </body>
 </html>
