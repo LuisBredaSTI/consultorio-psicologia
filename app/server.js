@@ -2,8 +2,6 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
-const crypto = require('crypto');
-const importer = require('./importer');
 
 const PORT = Number(process.env.PORT || 3000);
 const ROOT = __dirname;
@@ -191,40 +189,9 @@ function fillPatientAgenda(p, inicio, fim){
   return {created,skipped};
 }
 
-// Importação da planilha de controle: a análise fica em memória até aplicar (ou expirar em 1 hora).
-const importCache = new Map();
-function importSettings(b){ return { map:b.map||{}, removerExtras:b.removerExtras!==false, corrigir:b.corrigir||{}, zeroSemObservacao:['Desmarcou','Desmarquei'].includes(b.zeroSemObservacao)?b.zeroSemObservacao:'nao' }; }
-function importEntry(token){ for(const [k,v] of importCache) if(Date.now()-v.at>3600e3) importCache.delete(k); return importCache.get(token); }
-function backupDatabase(prefix){
-  const dir=path.join(DATA_DIR,'backups'); fs.mkdirSync(dir,{recursive:true});
-  const file=path.join(dir,`${prefix}-${new Date().toISOString().replace(/[-:]/g,'').replace(/\..*/,'').replace('T','-')}.db`);
-  db.exec(`VACUUM INTO '${file.replace(/'/g,"''")}'`); return path.basename(file);
-}
-
 async function api(req,res,url) {
   try {
     if (url.pathname==='/api/health' && req.method==='GET') return json(res,200,{ok:true,runtime:'Node.js',sqlite:'node:sqlite',version:APP_VERSION.version,channel:APP_VERSION.channel});
-
-    // Importar planilha de controle financeiro (.xlsx)
-    if(url.pathname==='/api/importar/previa' && req.method==='POST') {
-      const b=await body(req); if(!b.arquivo || String(b.arquivo).length>40e6) return json(res,400,{error:'Envie a planilha (.xlsx) com até 25 MB.'});
-      let parsed; try { parsed=importer.parseWorkbook(Buffer.from(String(b.arquivo),'base64')); } catch(e) { return json(res,400,{error:'Não foi possível ler a planilha: '+e.message}); }
-      if(!parsed.patients.length) return json(res,400,{error:'Nenhuma aba de paciente encontrada na planilha.'});
-      if(importCache.size>=3) importCache.delete(importCache.keys().next().value);
-      const token=crypto.randomUUID(); importCache.set(token,{parsed,at:Date.now()});
-      return json(res,200,{token,...importer.buildPlan(parsed,db,importSettings({}),today())});
-    }
-    if(url.pathname==='/api/importar/recalcular' && req.method==='POST') {
-      const b=await body(req), e=importEntry(b.token); if(!e) return json(res,410,{error:'A análise expirou. Envie a planilha novamente.'});
-      return json(res,200,importer.buildPlan(e.parsed,db,importSettings(b),today()));
-    }
-    if(url.pathname==='/api/importar/aplicar' && req.method==='POST') {
-      const b=await body(req), e=importEntry(b.token); if(!e) return json(res,410,{error:'A análise expirou. Envie a planilha novamente.'});
-      const plan=importer.buildPlan(e.parsed,db,importSettings(b),today());
-      const backup=backupDatabase('pre-importacao');
-      const result=importer.applyPlan(db,plan,nowIso()); importCache.delete(b.token);
-      return json(res,200,{backup,...result});
-    }
 
     // Patients
     if (url.pathname==='/api/pacientes' && req.method==='GET') {

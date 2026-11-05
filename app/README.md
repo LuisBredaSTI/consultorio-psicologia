@@ -1,6 +1,7 @@
-# Consultório de Psicologia — V28.9.0
+# Consultório de Psicologia — V28.9.1
 
 - Histórico do paciente no formato da planilha: Data | Valor | Observação (a observação é o status: Faltou, Sem antecedência, Desmarcou, Desmarquei...), pagamentos ao lado, linhas verdes conforme os pagamentos cobrem as sessões, fonte maior e tudo editável no grid.
+- Removida a importação de planilha (já concluída).
 - Novo visual (etapa 3): Financeiro em painel: 4 números principais (A receber, Atrasados, Recebido, Atendido), gráfico Atendido × Recebido, lista "Quem está devendo" com botões Pagamento e WhatsApp, e abas de detalhe (A receber, Atrasados, Recebimentos, Atendimento, Faltas, Reagendadas).
 - Novo visual (etapa 2): Agenda com grade que preenche a tela, cartões limpos (a cor da faixa é o status), painel "Hoje" com botões Realizada/Faltou/Desmarcou, detalhes da sessão ao clicar e revisão das sessões de dias anteriores sem status.
 - Novo visual (etapa 1): menu lateral com ícones (compacto em telas menores) e tela de Pacientes em lista + ficha, com cadastro, sessões e pagamentos editáveis na mesma tela; pensado para notebook de 15" (1366×768).
@@ -8,7 +9,6 @@
 - Histórico do paciente não lista sessões apenas agendadas.
 - Histórico do paciente: botão "Registrar pagamento" (data e valor) no canto superior direito.
 - Agenda: sessão realizada fica verde.
-- Financeiro > Importar planilha: lê a planilha de controle (.xlsx), mostra a prévia por paciente (sessões cobradas, pagamentos, saldos) e aplica após confirmação, com cópia de segurança do banco e conferência de saldos.
 - Atalho aponta para Consultorio.exe (em vez do PowerShell) e há uma cópia no Menu Iniciar: evita que o antivírus remova o atalho.
 - Novo status "Desmarquei" (a profissional desmarcou): libera o horário e não gera financeiro.
 - "Desmarcou" e "Desmarquei" são reversíveis: clique na linha cinza da agenda para voltar para Agendada ou reagendar.
