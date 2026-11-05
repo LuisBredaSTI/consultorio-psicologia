@@ -1,5 +1,6 @@
-# Consultório de Psicologia — V28.11.2
+# Consultório de Psicologia — V28.11.3
 
+- Cores: Desmarcou/Desmarquei depois da primeira sessão não paga também ficam amarelos (só fica sem cor o que não existe).
 - Cadastro do paciente: corrigido o não-gravar ao sair do campo quando o paciente está sem horário (o horário deixou de ser obrigatório na edição direta).
 - Financeiro, tabela "A receber · por paciente": nomes em fonte maior, colunas redistribuídas (sem o grande espaço em branco) e valores afastados da coluna de sessões.
 - Sessões e Pagamentos: lixeirinha no fim de cada linha para excluir o lançamento (com confirmação).
