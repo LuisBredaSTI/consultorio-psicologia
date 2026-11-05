@@ -38,7 +38,7 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stro
 .chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;font-size:12.5px;font-weight:650;white-space:nowrap}.chip.g{background:var(--ok-soft);color:var(--ok)}.chip.a{background:var(--warn-soft);color:var(--warn)}.chip.n{background:#eef0f4;color:#5b6272}.chip.r{background:var(--bad-soft);color:var(--bad)}.chip.b{background:#e8f0ff;color:#2f5fd0}
 .avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:var(--brand);background:var(--brand-soft);flex:none}.avatar.lg{width:48px;height:48px;font-size:17px}
 #pacientes{font-size:15px;height:var(--page-h,calc(100vh - 28px))}
-.pt{display:grid;grid-template-columns:clamp(250px,calc(var(--page-w,1100px)*.25),340px) minmax(0,1fr);height:100%;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.pt{display:grid;grid-template-columns:clamp(270px,calc(var(--page-w,1100px)*.27),400px) minmax(0,1fr);height:100%;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .pt-list{border-right:1px solid var(--line);display:flex;flex-direction:column;gap:10px;padding:16px 14px;min-height:0}
 .pt-list-head{display:flex;justify-content:space-between;align-items:center}.pt-list-head h1{font-size:22px;margin:0}.pt-sub{font-size:13px;color:var(--muted)}
 .pt-search{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:0 10px;color:var(--muted)}.pt-search input{border:0;outline:0;padding:9px 0;flex:1;font-size:15px;background:transparent;min-width:0}
@@ -47,7 +47,7 @@ svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stro
 .pt-items{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:2px;margin:0 -6px;padding:0 6px}
 .pt-item{display:flex;align-items:center;gap:10px;padding:7px 9px;border-radius:10px;cursor:pointer;border:0;background:transparent;width:100%;text-align:left;font:inherit;color:inherit;margin:0}
 .pt-item:hover{background:#f6f7fb}.pt-item.on{background:var(--brand-soft)}.pt-item.on .nm{color:var(--brand)}.pt-item.off .nm{color:#8a90a0}
-.pt-item .nm{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pt-item .nm{flex:1;min-width:0;font-weight:600;font-size:16.5px;line-height:1.2;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}.pt-item .avatar{width:30px;height:30px;font-size:12px}.pt-item .chip{font-size:12px;padding:2px 8px}
 .pt-detail{display:flex;flex-direction:column;min-height:0;padding:16px 20px;gap:12px;overflow:auto;background:#fafbfd}
 .pt-empty{margin:auto;color:var(--muted)}
 .pt-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.pt-head .who{display:flex;align-items:center;gap:14px;min-width:0}.pt-head h2{margin:0;font-size:24px;line-height:1.2}.pt-sub2{color:var(--muted);font-size:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -190,7 +190,7 @@ let weekStart=monday(new Date()),agendaData={sessoes:[],locks:[],eventos:[]};
 function pad(n){return String(n).padStart(2,'0')} function iso(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())} function dmy(v){if(!v)return '—';const p=String(v).slice(0,10).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:String(v)} function monday(d){let x=new Date(d);x.setHours(12,0,0,0);let day=x.getDay();x.setDate(x.getDate()-(day===0?6:day-1));return x} function addDays(d,n){let x=new Date(d);x.setDate(x.getDate()+n);return x}
 function show(id,btn){document.querySelectorAll('main>section').forEach(s=>s.classList.add('hidden'));$(id).classList.remove('hidden');document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');if(id==='inicio'){loadAgenda()}if(id==='pacientes')loadPatients();if(id==='financeiro')loadFinance();applyScale()}
 /* ===== Tamanho da tela (lembrado separadamente para cada tela) ===== */
-const SCALE_DEFAULT={inicio:.85,pacientes:1,financeiro:1};
+const SCALE_DEFAULT={inicio:.85,pacientes:.9,financeiro:1};
 function scaleMap(){try{return JSON.parse(localStorage.getItem('uiScale')||'{}')}catch(e){return {}}}
 function saveScale(m){try{localStorage.setItem('uiScale',JSON.stringify(m))}catch(e){}}
 function currentSection(){const s=document.querySelector('main>section:not(.hidden)');return s?s.id:'inicio'}
