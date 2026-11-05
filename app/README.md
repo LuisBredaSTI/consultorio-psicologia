@@ -1,5 +1,6 @@
-# Consultório de Psicologia — V28.11.0
+# Consultório de Psicologia — V28.11.1
 
+- Financeiro, tabela "A receber · por paciente": nomes em fonte maior, colunas redistribuídas (sem o grande espaço em branco) e valores afastados da coluna de sessões.
 - Sessões e Pagamentos: lixeirinha no fim de cada linha para excluir o lançamento (com confirmação).
 - Cores: verde = coberto pelos pagamentos (inclui Desmarcou/Desmarquei, sem branco no meio); amarelo = todas as sessões ainda não pagas, de qualquer mês.
 - Pacientes: coluna do nome maior.
