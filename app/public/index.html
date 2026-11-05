@@ -371,7 +371,8 @@ function obsLabel(x){const n=x.notes||'';if(x.status==='Realizada')return n;if(!
 const OBS_SUGGESTIONS=['Faltou','Sem antecedência','Desmarcou','Desmarquei','Feriado'];
 async function detail(id,fromDate=''){let d=await fetch('/api/pacientes/'+id).then(r=>r.json());let p=d.paciente;let s=d.sessoes;let pay=d.pagamentos;let attachments=d.anexos||[];
   const from=fromDate||$('patientHistoryFrom')?.value||'',todayIso=iso(new Date());
-  const filteredS=s.filter(x=>x.session_date<=todayIso&&(!from||x.session_date>=from)),filteredP=pay.filter(x=>!from||x.payment_date>=from);
+  const filteredS=s.filter(x=>x.status!=='Agendada'&&x.session_date<=todayIso&&(!from||x.session_date>=from)),  // sessões apenas agendadas não aparecem aqui
+  filteredP=pay.filter(x=>!from||x.payment_date>=from);
   const billed=x=>isBillableSession(x);
   const due=filteredS.filter(billed).reduce((a,x)=>a+Number(x.value||0),0),paid=filteredP.reduce((a,x)=>a+Number(x.amount||0),0);
   // O filtro altera os totais exibidos; o saldo é sempre o global do paciente (sessões passadas cobradas menos todos os pagamentos).
