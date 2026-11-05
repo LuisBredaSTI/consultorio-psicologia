@@ -326,6 +326,15 @@ async function api(req,res,url) {
       db.prepare('UPDATE sessions SET rescheduled_to_id=?, slot_removed=1 WHERE id=?').run(info.lastInsertRowid,id);
       return json(res,201,{original:sessionById(id),nova:sessionById(info.lastInsertRowid)});
     }
+    // Exclui o lançamento de vez (diferente de 'sem-reagendamento', que só libera o horário e mantém o registro)
+    let delS=url.pathname.match(/^\/api\/sessoes\/(\d+)$/);
+    if(delS && req.method==='DELETE') {
+      const id=Number(delS[1]); if(!sessionById(id)) return json(res,404,{error:'Sessão não encontrada'});
+      db.prepare('UPDATE sessions SET rescheduled_to_id=NULL WHERE rescheduled_to_id=?').run(id);
+      db.prepare('UPDATE sessions SET rescheduled_from_id=NULL WHERE rescheduled_from_id=?').run(id);
+      db.prepare('DELETE FROM sessions WHERE id=?').run(id);
+      return json(res,200,{ok:true});
+    }
     rm=url.pathname.match(/^\/api\/sessoes\/(\d+)\/sem-reagendamento$/);
     if(rm && req.method==='POST') { const id=Number(rm[1]); const s=sessionById(id); if(!s) return json(res,404,{error:'Sessão não encontrada'}); db.prepare('UPDATE sessions SET slot_removed=1 WHERE id=?').run(id); return json(res,200,sessionById(id)); }
     m=url.pathname.match(/^\/api\/sessoes\/(\d+)$/);

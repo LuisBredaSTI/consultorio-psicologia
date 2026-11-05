@@ -1,5 +1,8 @@
-# Consultório de Psicologia — V28.10.1
+# Consultório de Psicologia — V28.11.0
 
+- Sessões e Pagamentos: lixeirinha no fim de cada linha para excluir o lançamento (com confirmação).
+- Cores: verde = coberto pelos pagamentos (inclui Desmarcou/Desmarquei, sem branco no meio); amarelo = todas as sessões ainda não pagas, de qualquer mês.
+- Pacientes: coluna do nome maior.
 - Histórico do paciente no formato da planilha: Data | Valor | Observação (a observação é o status: Faltou, Sem antecedência, Desmarcou, Desmarquei...), pagamentos ao lado, linhas verdes conforme os pagamentos cobrem as sessões, fonte maior e tudo editável no grid.
 - Pacientes: lista mais larga com nomes inteiros (quebram em duas linhas); abre em 90%.
 - Controle de tamanho da tela (− 85% +) no rodapé do menu, lembrado separadamente para cada tela; a Agenda começa em 85%.
