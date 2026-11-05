@@ -313,6 +313,11 @@ async function api(req,res,url) {
     if(ax && req.method==='DELETE') {db.prepare('DELETE FROM patient_attachments WHERE id=?').run(Number(ax[1]));return json(res,200,{ok:true});}
 
     // Agenda
+    // Sessões de dias anteriores que continuam 'Agendada' (ninguém marcou o que aconteceu): não entram no financeiro.
+    if(url.pathname==='/api/agenda/pendentes' && req.method==='GET') {
+      const base="FROM sessions s JOIN patients p ON p.id=s.patient_id WHERE s.status='Agendada' AND COALESCE(s.slot_removed,0)=0 AND s.session_date<?";
+      return json(res,200,{total:get('SELECT COUNT(*) c '+base,today()).c,itens:all('SELECT s.id,s.session_date,s.session_time,s.value,p.name AS patient_name '+base+' ORDER BY s.session_date DESC, s.session_time DESC LIMIT 300',today())});
+    }
     if(url.pathname==='/api/agenda' && req.method==='GET') {
       const start=url.searchParams.get('start'), end=url.searchParams.get('end');
       if(!start||!end) return json(res,400,{error:'start e end são obrigatórios'});
