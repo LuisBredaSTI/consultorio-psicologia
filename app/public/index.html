@@ -436,13 +436,12 @@ async function patientCell(el){const box=el.closest('[data-pid]'),id=Number(box.
   const b={nome:g('nome').value.trim(),telefone:g('telefone').value,valor_sessao:g('valor_sessao').value,dia_preferencial:g('dia_preferencial').value,horario_preferencial:g('horario_preferencial').value,frequencia:freq,data_inicio_frequencia:freq==='Quinzenal'?(g('data_inicio_frequencia').value||''):'',observacoes:g('observacoes').value};
   if(!b.nome){toast('O nome não pode ficar vazio.');return setPatientForm(box,old)}
   if(b.valor_sessao===''||Number(b.valor_sessao)<0){toast('Informe um valor de sessão válido.');return setPatientForm(box,old)}
-  if(!b.horario_preferencial){toast('Informe o horário preferencial.');return setPatientForm(box,old)}
   if(freq==='Quinzenal'&&!b.data_inicio_frequencia){toast('Informe a data de referência para salvar a frequência quinzenal.');g('data_inicio_frequencia').focus();return}
-  const r=await fetch('/api/pacientes/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({...b,data_inicio_frequencia:b.data_inicio_frequencia||null})});const j=await r.json().catch(()=>({}));
+  const r=await fetch('/api/pacientes/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({...b,horario_preferencial:b.horario_preferencial||null,data_inicio_frequencia:b.data_inicio_frequencia||null})});const j=await r.json().catch(()=>({}));
   if(!r.ok){toast(j.error||'Não foi possível salvar.');return setPatientForm(box,old)}
   box.dataset.old=JSON.stringify(b);toast('Paciente atualizado.');
   if($('ptName'))$('ptName').textContent=b.nome;
-  const sum=box.querySelector('.pt-card-head .muted');if(sum)sum.textContent=`${weekdayName(b.dia_preferencial)} ${b.horario_preferencial} · ${freq==='Quinzenal'?'a cada 14 dias':'semanal'} · ${money(b.valor_sessao)}`;
+  const sum=box.querySelector('.pt-card-head .muted');if(sum)sum.textContent=`${weekdayName(b.dia_preferencial)} ${b.horario_preferencial||''} · ${freq==='Quinzenal'?'a cada 14 dias':'semanal'} · ${money(b.valor_sessao)}`;
   loadPatients(true);
   const sched=['dia_preferencial','horario_preferencial','frequencia','data_inicio_frequencia'].some(k=>String(old[k]||'')!==String(b[k]||''));if(sched)offerFill(id)}
 function ptFormOpen(){const v=localStorage.getItem('ptFormOpen');return v===null?window.innerHeight>=820:v==='1'}
