@@ -1,6 +1,7 @@
-# Consultório de Psicologia — V28.5.2
+# Consultório de Psicologia — V28.6.0
 
 - Histórico do paciente no formato da planilha: Data | Valor | Observação (a observação é o status: Faltou, Sem antecedência, Desmarcou, Desmarquei...), pagamentos ao lado, linhas verdes conforme os pagamentos cobrem as sessões, fonte maior e tudo editável no grid.
+- Histórico do paciente: sessões cobradas do mês corrente ainda não cobertas pelos pagamentos ficam em amarelo (cobertas ficam verdes).
 - Histórico do paciente não lista sessões apenas agendadas.
 - Histórico do paciente: botão "Registrar pagamento" (data e valor) no canto superior direito.
 - Agenda: sessão realizada fica verde.
