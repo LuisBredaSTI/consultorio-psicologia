@@ -1,6 +1,7 @@
-# Consultório de Psicologia — V28.8.0
+# Consultório de Psicologia — V28.9.0
 
 - Histórico do paciente no formato da planilha: Data | Valor | Observação (a observação é o status: Faltou, Sem antecedência, Desmarcou, Desmarquei...), pagamentos ao lado, linhas verdes conforme os pagamentos cobrem as sessões, fonte maior e tudo editável no grid.
+- Novo visual (etapa 3): Financeiro em painel: 4 números principais (A receber, Atrasados, Recebido, Atendido), gráfico Atendido × Recebido, lista "Quem está devendo" com botões Pagamento e WhatsApp, e abas de detalhe (A receber, Atrasados, Recebimentos, Atendimento, Faltas, Reagendadas).
 - Novo visual (etapa 2): Agenda com grade que preenche a tela, cartões limpos (a cor da faixa é o status), painel "Hoje" com botões Realizada/Faltou/Desmarcou, detalhes da sessão ao clicar e revisão das sessões de dias anteriores sem status.
 - Novo visual (etapa 1): menu lateral com ícones (compacto em telas menores) e tela de Pacientes em lista + ficha, com cadastro, sessões e pagamentos editáveis na mesma tela; pensado para notebook de 15" (1366×768).
 - Histórico do paciente: sessões cobradas do mês corrente ainda não cobertas pelos pagamentos ficam em amarelo (cobertas ficam verdes).

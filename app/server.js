@@ -536,21 +536,21 @@ async function api(req,res,url) {
     }
     if(url.pathname==='/api/financeiro/detalhes' && req.method==='GET') {
       const mes=url.searchParams.get('mes')||thisMonth(), tipo=url.searchParams.get('tipo')||'recebimentos';
-      if(tipo==='recebimentos') return json(res,200,all(`SELECT pg.id,pg.payment_date AS data,pg.amount AS valor,p.name AS paciente_name,pg.notes AS observacao FROM payments pg JOIN patients p ON p.id=pg.patient_id WHERE substr(pg.payment_date,1,7)=? ORDER BY p.name,pg.payment_date,pg.id`,mes));
+      if(tipo==='recebimentos') return json(res,200,all(`SELECT pg.id,pg.payment_date AS data,pg.amount AS valor,pg.patient_id AS paciente_id,p.name AS paciente_name,pg.notes AS observacao FROM payments pg JOIN patients p ON p.id=pg.patient_id WHERE substr(pg.payment_date,1,7)=? ORDER BY p.name,pg.payment_date,pg.id`,mes));
       if(tipo==='devido'){
         const rows=unpaidSessionRows().sort((a,b)=>a.patient_name.localeCompare(b.patient_name)||a.session_date.localeCompare(b.session_date));
-        return json(res,200,rows.map(x=>({id:x.id,data:x.session_date,horario:x.session_time,valor:x.remaining,valor_original:x.value,status:x.status,paciente_name:x.patient_name,observacao:x.notes,origem:'Sessão'})));
+        return json(res,200,rows.map(x=>({id:x.id,data:x.session_date,horario:x.session_time,valor:x.remaining,valor_original:x.value,status:x.status,paciente_id:x.patient_id,paciente_name:x.patient_name,observacao:x.notes,origem:'Sessão'})));
       }
       if(tipo==='atrasados'){
         const cutoff=new Date(); cutoff.setHours(0,0,0,0); cutoff.setDate(cutoff.getDate()-30);
         const rows=unpaidSessionRows().filter(x=>new Date(x.session_date+'T12:00:00')<=cutoff).sort((a,b)=>a.patient_name.localeCompare(b.patient_name)||a.session_date.localeCompare(b.session_date));
-        return json(res,200,rows.map(x=>({id:x.id,data:x.session_date,horario:x.session_time,valor:x.remaining,status:x.status,paciente_name:x.patient_name,observacao:x.notes,dias:Math.floor((Date.now()-new Date(x.session_date+'T12:00:00').getTime())/86400000)})));
+        return json(res,200,rows.map(x=>({id:x.id,data:x.session_date,horario:x.session_time,valor:x.remaining,status:x.status,paciente_id:x.patient_id,paciente_name:x.patient_name,observacao:x.notes,dias:Math.floor((Date.now()-new Date(x.session_date+'T12:00:00').getTime())/86400000)})));
       }
       const map={realizadas:"status='Realizada'",faltas:"status='Faltou'",reagendadas:"rescheduled_to_id IS NOT NULL"};
       const where=map[tipo]||map.realizadas;
       const isYear=/^\d{4}$/.test(mes);
       const period=isYear?`substr(s.session_date,1,4)=?`:`substr(s.session_date,1,7)=?`;
-      return json(res,200,all(`SELECT s.id,s.session_date AS data,s.session_time AS horario,s.value AS valor,s.status,p.name AS paciente_name,s.notes AS observacao FROM sessions s JOIN patients p ON p.id=s.patient_id WHERE ${period} AND ${where} ORDER BY p.name,s.session_date,s.session_time,s.id`,mes));
+      return json(res,200,all(`SELECT s.id,s.session_date AS data,s.session_time AS horario,s.value AS valor,s.status,s.patient_id AS paciente_id,p.name AS paciente_name,s.notes AS observacao FROM sessions s JOIN patients p ON p.id=s.patient_id WHERE ${period} AND ${where} ORDER BY p.name,s.session_date,s.session_time,s.id`,mes));
     }
     if(url.pathname==='/api/resumo-ano' && req.method==='GET') {
       const ano=String(url.searchParams.get('ano')||new Date().getFullYear());
