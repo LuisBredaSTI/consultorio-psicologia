@@ -44,7 +44,7 @@ nav{position:fixed;left:0;top:0;width:170px;height:100vh;overflow-y:auto;z-index
 .hist-table{width:100%;border-collapse:collapse;table-layout:fixed}.hist-table thead th{position:sticky;top:0;z-index:2;background:#fafafa;box-shadow:0 1px 0 var(--line);font-size:14px;text-align:left;padding:9px 10px}
 .hist-table td{padding:3px 6px;border-bottom:1px solid #f0f1f4}.hist-table th:nth-child(1),.hist-table td:nth-child(1){width:150px}.hist-table th:nth-child(2),.hist-table td:nth-child(2){width:130px}
 .hist-in{width:100%;box-sizing:border-box;padding:7px 9px;font-size:15px;font-family:inherit;border:1px solid transparent;border-radius:6px;background:transparent}.hist-in:hover,.hist-in:focus{border-color:#cfd3dc;background:#fff;outline:none}.hist-in.val{text-align:right}.hist-in:disabled{color:#9aa0ab}
-.hist-table tr.session-paid td{background:#dff3e3}.hist-info{font-size:14px;color:var(--muted)}
+.hist-title{display:flex;justify-content:space-between;align-items:center;gap:12px}.hist-table tr.session-paid td{background:#dff3e3}.hist-info{font-size:14px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -85,8 +85,8 @@ function toast(msg){$('toast').textContent=msg;$('toast').style.display='block';
 
 /* Caixas de diálogo próprias (substituem confirm/prompt do navegador) */
 let _dlg=null;
-function dialogBox(title,body,buttons){return new Promise(res=>{_dlg={res,buttons};$('dlgRoot').innerHTML=`<div class="modalback" style="z-index:3000" onclick="if(event.target===this)dlgClick(-1)"><div class="modal" style="width:min(440px,94vw)"><h2>${esc(title)}</h2>${body}<div class="modalfooter">${buttons.map((b,i)=>`<button class="${b.cls||'secondary'}" onclick="dlgClick(${i})">${esc(b.label)}</button>`).join('')}</div></div></div>`;const inp=$('dlgInput');if(inp){inp.focus();try{inp.select()}catch(e){}inp.onkeydown=e=>{if(e.key==='Enter')dlgClick(buttons.findIndex(b=>b.input))}}})}
-function dlgClick(i){if(!_dlg)return;const {res,buttons}=_dlg;_dlg=null;const b=buttons[i],inp=$('dlgInput');const val=b?(b.input?(inp?inp.value:''):b.value):null;$('dlgRoot').innerHTML='';res(val)}
+function dialogBox(title,body,buttons){return new Promise(res=>{_dlg={res,buttons};$('dlgRoot').innerHTML=`<div class="modalback" style="z-index:3000" onclick="if(event.target===this)dlgClick(-1)"><div class="modal" style="width:min(440px,94vw)"><h2>${esc(title)}</h2>${body}<div class="modalfooter">${buttons.map((b,i)=>`<button class="${b.cls||'secondary'}" onclick="dlgClick(${i})">${esc(b.label)}</button>`).join('')}</div></div></div>`;const inp=$('dlgInput');if(inp){inp.focus();try{inp.select()}catch(e){}}document.querySelectorAll('#dlgRoot input').forEach(i=>i.onkeydown=e=>{if(e.key==='Enter')dlgClick(buttons.findIndex(b=>b.input||b.collect))})})}
+function dlgClick(i){if(!_dlg)return;const {res,buttons}=_dlg;_dlg=null;const b=buttons[i],inp=$('dlgInput');const val=b?(b.collect?b.collect():b.input?(inp?inp.value:''):b.value):null;$('dlgRoot').innerHTML='';res(val)}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&_dlg)dlgClick(-1)});
 function confirmBox(msg,o={}){return dialogBox(o.title||'Confirmar',`<p>${esc(msg)}</p>`,[{label:o.cancelText||'Cancelar',value:false},{label:o.okText||'Confirmar',value:true,cls:o.danger?'secondary danger':'primary'}]).then(v=>!!v)}
 function promptBox(title,label,o={}){return dialogBox(title,`<label style="display:block;font-size:12px;color:#555">${esc(label)}<input id="dlgInput" type="${o.type||'text'}" value="${esc(o.value||'')}" placeholder="${esc(o.placeholder||'')}" style="display:block;width:100%;margin-top:6px;box-sizing:border-box"></label>`,[{label:'Cancelar',value:null},{label:o.okText||'OK',input:true,cls:'primary'}])}
@@ -391,8 +391,16 @@ async function detail(id,fromDate=''){let d=await fetch('/api/pacientes/'+id).th
   <div class="hist-cols"><div><h3>Sessões</h3><div class="hist-panel"><table class="hist-table"><thead><tr><th>Data</th><th>Valor</th><th>Observação</th></tr></thead><tbody>${sessionRows||'<tr><td colspan="3" class="muted">Nenhuma sessão.</td></tr>'}</tbody></table></div></div>
   <div><h3>Pagamentos</h3><div class="hist-panel"><table class="hist-table"><thead><tr><th>Data</th><th>Valor</th><th>Observação</th></tr></thead><tbody>${payRows||'<tr><td colspan="3" class="muted">Nenhum pagamento.</td></tr>'}</tbody></table></div></div></div>
   <datalist id="obsSug">${OBS_SUGGESTIONS.map(o=>`<option value="${o}">`).join('')}</datalist>${attachmentHtml}`;
-  openModal(`Histórico • ${p.name}`,body,`<button class="secondary" onclick="closeModal()">Fechar</button>${phone?`<button class="primary" onclick="window.open('https://wa.me/55${phone}?text='+encodeURIComponent(${JSON.stringify(text)}),'_blank')">💬 Abrir WhatsApp</button>`:''}`);
-  document.querySelector('#modalRoot .modal').classList.add('hist');
+  openModal(`Histórico • ${esc(p.name)}`,body,`<button class="secondary" onclick="closeModal()">Fechar</button>${phone?`<button class="primary" onclick="window.open('https://wa.me/55${phone}?text='+encodeURIComponent(${JSON.stringify(text)}),'_blank')">💬 Abrir WhatsApp</button>`:''}`);
+  const m=document.querySelector('#modalRoot .modal');m.classList.add('hist');const t=m.querySelector('h2');t.classList.add('hist-title');t.insertAdjacentHTML('beforeend',`<button class="primary" onclick="addPatientPayment(${p.id})">＋ Registrar pagamento</button>`);
+}
+async function addPatientPayment(id,prev={}){
+  const v=await dialogBox('Registrar pagamento',`<div class="formgrid"><label>Data do pagamento<input id="dlgDate" type="date" value="${esc(prev.data||iso(new Date()))}"></label><label>Valor<input id="dlgInput" type="number" min="0" step="0.01" placeholder="0,00" value="${esc(prev.valor||'')}"></label></div>`,[{label:'Cancelar',value:null},{label:'Salvar',cls:'primary',collect:()=>({data:$('dlgDate').value,valor:$('dlgInput').value})}]);
+  if(!v)return;
+  if(!v.data||!(Number(v.valor)>0)){toast('Informe a data e um valor maior que zero.');return addPatientPayment(id,v)}
+  const r=await fetch('/api/pagamentos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({patient_id:id,data:v.data,valor:v.valor})});const j=await r.json().catch(()=>({}));
+  if(!r.ok)return toast(j.error||'Não foi possível registrar o pagamento.');
+  toast('Pagamento registrado.');loadPatients();loadFinance();detail(id);
 }
 async function savePatientSessionInline(id,el,field){
   const rows=await fetch('/api/sessoes').then(r=>r.json());const x=rows.find(r=>Number(r.id)===Number(id));if(!x)return toast('Sessão não encontrada.');
